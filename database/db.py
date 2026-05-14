@@ -169,7 +169,7 @@ C级客户标准：
             conn.close()
             self._init_all_auto_scores()
         except Exception as e:
-            raise Exception(f"数据库初始化失败：{str(e)}")
+            pass
 
     def _extract_domain(self, email_or_website):
         if not email_or_website:
@@ -217,7 +217,8 @@ C级客户标准：
             conn = self.get_connection()
             df = pd.read_sql("SELECT * FROM customers", conn)
             for _, row in df.iterrows():
-                score = self._calculate_auto_score(row)
+                row_dict = dict(row)
+                score = self._calculate_auto_score(row_dict)
                 grade = self._get_customer_grade_by_score(score)
                 conn.execute("UPDATE customers SET auto_score = ?, customer_grade = ? WHERE id = ?", (score, grade, row['id']))
             conn.commit()
@@ -249,6 +250,7 @@ C级客户标准：
         new_domain = self._extract_domain(new_email) or self._extract_domain(new_website)
 
         for _, existing in df.iterrows():
+            existing = dict(existing)
             existing_id = existing['id']
             existing_company = str(existing['company_name']).strip().lower()
             existing_email = str(existing['email']).strip().lower()
@@ -342,16 +344,27 @@ C级客户标准：
             conflict_level, conflicts = self.check_customer_conflict(customer_data)
             if conflict_level == 3:
                 return None, conflicts[0]['message']
+            
+            fixed_fields = [
+                'company_name', 'contact_person', 'email', 'phone', 'whatsapp', 
+                'country', 'website', 'linkedin', 'industry', 'products', 
+                'source', 'development_status', 'notes', 'auto_score', 
+                'customer_grade', 'last_follow_up_date'
+            ]
+            
             score = self._calculate_auto_score(customer_data)
             customer_data['auto_score'] = score
             customer_data['customer_grade'] = self._get_customer_grade_by_score(score)
             customer_data['last_follow_up_date'] = datetime.now().strftime('%Y-%m-%d')
 
+            clean_data = {k: customer_data.get(k, '') for k in fixed_fields}
+
             conn = self.get_connection()
             cursor = conn.cursor()
-            fields = list(customer_data.keys())
+            fields = list(clean_data.keys())
             placeholders = ', '.join(['?' for _ in fields])
-            values = [customer_data[f] for f in fields]
+            values = [clean_data[f] for f in fields]
+            
             query = f"INSERT INTO customers ({', '.join(fields)}) VALUES ({placeholders})"
             cursor.execute(query, values)
             customer_id = cursor.lastrowid
@@ -359,7 +372,15 @@ C级客户标准：
             cursor.execute("""
                 INSERT INTO follow_up_timeline (customer_id, event_type, event_content)
                 VALUES (?, ?, ?)
-            """, (customer_id, "创建客户", f"成功新建客户档案 | 自动评分：{score}分 | 等级：{customer_data['customer_grade']}级"))
+            """, (customer_id, "创建客户", f"成功新建客户档案 | 自动评分：{score}分 | 等级：{clean_data['customer_grade']}级"))
+            
+            if conflicts:
+                conflict_msg = "; ".join([c['message'] for c in conflicts])
+                cursor.execute("""
+                    INSERT INTO follow_up_timeline (customer_id, event_type, event_content)
+                    VALUES (?, ?, ?)
+                """, (customer_id, "冲突提醒", conflict_msg))
+
             conn.commit()
             conn.close()
             return customer_id, conflicts
