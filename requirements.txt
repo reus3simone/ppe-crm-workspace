@@ -1,6 +1,10 @@
-streamlit
-pandas
-openpyxl
-requests
-beautifulsoup4
-numpy
+# 核心框架
+streamlit>=1.32.0
+
+# 数据处理
+pandas>=2.1.0
+numpy>=1.24.0
+openpyxl>=3.1.0
+
+# 日期时间
+python-dateutil>=2.8.2
