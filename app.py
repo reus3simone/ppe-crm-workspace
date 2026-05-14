@@ -18,7 +18,7 @@ st.set_page_config(
     menu_items={
         'Get Help': None,
         'Report a bug': None,
-        'About': "PPE客户开发管理系统 - 清新版"
+        'About': "PPE客户开发管理系统 v3.0"
     }
 )
 
@@ -75,16 +75,6 @@ st.markdown("""
     
     .stButton > button[kind="secondary"]:hover {
         background-color: #e2e8f0;
-    }
-    
-    /* 成功按钮 - 自定义绿色 */
-    .stButton > button.success-btn {
-        background-color: #10b981 !important;
-        color: white !important;
-    }
-    
-    .stButton > button.success-btn:hover {
-        background-color: #059669 !important;
     }
     
     /* 危险按钮 */
@@ -233,52 +223,68 @@ st.markdown("""
         color: #166534 !important;
     }
     
-    /* 邮件历史卡片 */
-    .email-history-card {
-        background: #f8fafc;
+    /* 时间轴样式 */
+    .timeline-item {
+        position: relative;
+        padding-left: 2rem;
+        padding-bottom: 1.5rem;
+        border-left: 2px solid #3b82f6;
+    }
+    
+    .timeline-item:last-child {
+        border-left: none;
+    }
+    
+    .timeline-dot {
+        position: absolute;
+        left: -0.5rem;
+        top: 0;
+        width: 1rem;
+        height: 1rem;
+        border-radius: 50%;
+        background-color: #3b82f6;
+        border: 3px solid white;
+        box-shadow: 0 0 0 2px #3b82f6;
+    }
+    
+    .timeline-date {
+        font-size: 0.75rem;
+        color: #64748b;
+        font-weight: 600;
+    }
+    
+    .timeline-content {
+        background: white;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
         border: 1px solid #e2e8f0;
-        border-radius: 8px;
+        margin-top: 0.25rem;
+    }
+    
+    /* 模板卡片 */
+    .template-card {
+        background: white;
         padding: 1rem;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
         margin-bottom: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s;
     }
     
-    /* 链接样式 */
-    a {
-        color: #3b82f6 !important;
-        text-decoration: none;
+    .template-card:hover {
+        border-color: #3b82f6;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
     }
     
-    a:hover {
-        text-decoration: underline;
-    }
-    
-    /* 数据表格样式 */
-    .stDataFrame {
+    /* 复制成功提示 */
+    .copy-success {
+        background-color: #dcfce7;
+        color: #166534;
+        padding: 0.5rem 1rem;
         border-radius: 8px;
-        overflow: hidden;
-    }
-    
-    /* 分隔线 */
-    hr {
-        border-color: #e2e8f0;
-        margin: 1.5rem 0;
-    }
-    
-    /* 展开器样式 */
-    .streamlit-expanderHeader {
-        background-color: #f1f5f9;
-        border-radius: 8px;
-    }
-    
-    /* 标签页样式 */
-    .stTabs [data-testid="stTab"] {
-        background-color: #f1f5f9;
-        border-radius: 8px 8px 0 0;
-    }
-    
-    .stTabs [data-testid="stTab"][aria-selected="true"] {
-        background-color: white;
-        border-bottom: 2px solid #3b82f6;
+        margin-top: 0.5rem;
+        text-align: center;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -302,7 +308,7 @@ class Database:
         conn = self.get_connection()
         cursor = conn.cursor()
         
-        # 1. 创建customers表（如果不存在）
+        # 1. 创建customers表
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS customers (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -324,9 +330,8 @@ class Database:
             )
         """)
         
-        # 2. 数据迁移：添加样品管理字段（如果不存在）
+        # 2. 迁移字段
         existing_columns = [col[1] for col in cursor.execute("PRAGMA table_info(customers)").fetchall()]
-        
         if 'sample_status' not in existing_columns:
             cursor.execute("ALTER TABLE customers ADD COLUMN sample_status TEXT DEFAULT '未寄出'")
         if 'sample_send_date' not in existing_columns:
@@ -335,8 +340,10 @@ class Database:
             cursor.execute("ALTER TABLE customers ADD COLUMN sample_tracking_number TEXT")
         if 'sample_feedback' not in existing_columns:
             cursor.execute("ALTER TABLE customers ADD COLUMN sample_feedback TEXT")
+        if 'whatsapp' not in existing_columns:
+            cursor.execute("ALTER TABLE customers ADD COLUMN whatsapp TEXT")
         
-        # 3. 创建邮件历史记录表
+        # 3. 邮件历史表
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS email_history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -349,7 +356,7 @@ class Database:
             )
         """)
         
-        # 4. 创建知识库表
+        # 4. 知识库表
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS knowledge_base (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -359,6 +366,87 @@ class Database:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        
+        # 5. 系统设置表（AI Prompt配置）
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS system_settings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                setting_key TEXT UNIQUE NOT NULL,
+                setting_value TEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # 6. 邮件模板表
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS email_templates (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                category TEXT,
+                subject TEXT,
+                content TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # 7. 跟进时间轴表
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS follow_up_timeline (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                customer_id INTEGER NOT NULL,
+                event_type TEXT NOT NULL,
+                event_content TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (customer_id) REFERENCES customers (id) ON DELETE CASCADE
+            )
+        """)
+        
+        # 初始化默认系统设置
+        default_settings = {
+            'company_intro': """我们是全产业链防护面料工厂，纺纱-织造-后整理一体化。
+主营产品：
+- 芳纶1313/1414阻燃面料（FRA、AW、PA系列）
+- HPPE防切割面料
+- PANOX预氧化丝
+- 各类工业防护服装面料
+
+所有产品符合EN388、EN469、NFPA 2112等国际标准。""",
+            'ai_email_prompt': """你是一名专业的PPE行业外贸业务员，擅长开发欧洲防护客户。
+邮件要求：
+1. 自然、专业、不模板化
+2. 避免强烈的销售感，像行业同行沟通
+3. 简短精准，直击痛点
+4. 参考公司介绍和客户信息
+5. 结尾不要太生硬""",
+            'customer_grade_rules': """A级客户标准：
+- 有明确的PPE/防护产品线
+- 有欧洲/北美市场
+- 有相关认证
+- 有工业客户群体
+- 有研发/技术团队
+
+B级客户标准：
+- 有相关产品，但技术属性较弱
+- 贸易商/分销商
+- 市场范围较小
+
+C级客户标准：
+- 产品不匹配
+- 只关注价格
+- 无明确防护需求""",
+            'sop_rules': """开发SOP：
+1. 先背调客户网站/LinkedIn
+2. 判断客户等级和产品匹配度
+3. 找到精准采购切入点
+4. 发送个性化开发邮件
+5. 3-5天跟进一次"""
+        }
+        
+        for key, value in default_settings.items():
+            cursor.execute("""
+                INSERT OR IGNORE INTO system_settings (setting_key, setting_value)
+                VALUES (?, ?)
+            """, (key, value))
         
         conn.commit()
         conn.close()
@@ -380,11 +468,84 @@ class Database:
             cursor.execute(query, values)
             
             customer_id = cursor.lastrowid
+            
+            # 添加时间轴记录
+            cursor.execute("""
+                INSERT INTO follow_up_timeline (customer_id, event_type, event_content)
+                VALUES (?, ?, ?)
+            """, (customer_id, "创建客户", f"成功创建客户档案"))
+            
             conn.commit()
             conn.close()
             return customer_id, None
         except Exception as e:
             return None, str(e)
+    
+    def batch_import_customers(self, df):
+        """批量导入客户"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            success_count = 0
+            duplicate_count = 0
+            error_count = 0
+            
+            for _, row in df.iterrows():
+                try:
+                    # 去重检查（按邮箱或公司名）
+                    email = str(row.get('email', '')).strip()
+                    company_name = str(row.get('company_name', '')).strip()
+                    
+                    if email:
+                        cursor.execute("SELECT id FROM customers WHERE email = ?", (email,))
+                        if cursor.fetchone():
+                            duplicate_count += 1
+                            continue
+                    
+                    if company_name:
+                        cursor.execute("SELECT id FROM customers WHERE company_name = ?", (company_name,))
+                        if cursor.fetchone():
+                            duplicate_count += 1
+                            continue
+                    
+                    # 准备数据
+                    customer_data = {
+                        'company_name': company_name,
+                        'contact_person': str(row.get('contact_person', '')),
+                        'email': email,
+                        'phone': str(row.get('phone', '')),
+                        'country': str(row.get('country', '')),
+                        'linkedin': str(row.get('linkedin', '')),
+                        'website': str(row.get('website', '')),
+                        'customer_grade': str(row.get('customer_grade', 'C')),
+                        'status': str(row.get('status', '备选')),
+                        'industry': str(row.get('industry', '')),
+                        'products': str(row.get('products', '')),
+                        'notes': str(row.get('notes', ''))
+                    }
+                    
+                    if not customer_data['company_name']:
+                        error_count += 1
+                        continue
+                    
+                    fields = list(customer_data.keys())
+                    placeholders = ', '.join(['?' for _ in fields])
+                    values = [customer_data[f] for f in fields]
+                    
+                    query = f"INSERT INTO customers ({', '.join(fields)}) VALUES ({placeholders})"
+                    cursor.execute(query, values)
+                    success_count += 1
+                    
+                except Exception as e:
+                    error_count += 1
+                    continue
+            
+            conn.commit()
+            conn.close()
+            return success_count, duplicate_count, error_count, None
+        except Exception as e:
+            return 0, 0, 0, str(e)
     
     def update_customer(self, customer_id, customer_data):
         """更新客户信息"""
@@ -400,6 +561,12 @@ class Database:
             query = f"UPDATE customers SET {set_clause} WHERE id = ?"
             cursor.execute(query, values)
             
+            # 添加时间轴记录
+            cursor.execute("""
+                INSERT INTO follow_up_timeline (customer_id, event_type, event_content)
+                VALUES (?, ?, ?)
+            """, (customer_id, "更新信息", "客户信息已更新"))
+            
             conn.commit()
             conn.close()
             return True, None
@@ -413,6 +580,7 @@ class Database:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM customers WHERE id = ?", (customer_id,))
             cursor.execute("DELETE FROM email_history WHERE customer_id = ?", (customer_id,))
+            cursor.execute("DELETE FROM follow_up_timeline WHERE customer_id = ?", (customer_id,))
             conn.commit()
             conn.close()
             return True, None
@@ -442,6 +610,38 @@ class Database:
             return pd.DataFrame(), str(e)
     
     # =========================================================================
+    # 时间轴操作
+    # =========================================================================
+    def add_timeline_event(self, customer_id, event_type, event_content):
+        """添加时间轴事件"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO follow_up_timeline (customer_id, event_type, event_content)
+                VALUES (?, ?, ?)
+            """, (customer_id, event_type, event_content))
+            conn.commit()
+            conn.close()
+            return True, None
+        except Exception as e:
+            return False, str(e)
+    
+    def get_customer_timeline(self, customer_id):
+        """获取客户时间轴"""
+        try:
+            conn = self.get_connection()
+            df = pd.read_sql("""
+                SELECT * FROM follow_up_timeline 
+                WHERE customer_id = ? 
+                ORDER BY created_at DESC
+            """, conn, params=(customer_id,))
+            conn.close()
+            return df, None
+        except Exception as e:
+            return pd.DataFrame(), str(e)
+    
+    # =========================================================================
     # 邮件历史操作
     # =========================================================================
     def add_email_history(self, customer_id, subject, content):
@@ -450,7 +650,6 @@ class Database:
             conn = self.get_connection()
             cursor = conn.cursor()
             
-            # 获取当前最大版本号
             cursor.execute("SELECT MAX(version) FROM email_history WHERE customer_id = ?", (customer_id,))
             max_version = cursor.fetchone()[0]
             version = (max_version or 0) + 1
@@ -459,6 +658,12 @@ class Database:
                 INSERT INTO email_history (customer_id, version, email_subject, email_content)
                 VALUES (?, ?, ?, ?)
             """, (customer_id, version, subject, content))
+            
+            # 添加时间轴记录
+            cursor.execute("""
+                INSERT INTO follow_up_timeline (customer_id, event_type, event_content)
+                VALUES (?, ?, ?)
+            """, (customer_id, "生成邮件", f"开发邮件 v{version} 已生成"))
             
             conn.commit()
             conn.close()
@@ -481,6 +686,76 @@ class Database:
             return pd.DataFrame(), str(e)
     
     # =========================================================================
+    # 邮件模板操作
+    # =========================================================================
+    def add_email_template(self, name, category, subject, content):
+        """添加邮件模板"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO email_templates (name, category, subject, content)
+                VALUES (?, ?, ?, ?)
+            """, (name, category, subject, content))
+            conn.commit()
+            conn.close()
+            return True, None
+        except Exception as e:
+            return False, str(e)
+    
+    def get_all_templates(self):
+        """获取所有模板"""
+        try:
+            conn = self.get_connection()
+            df = pd.read_sql("SELECT * FROM email_templates ORDER BY created_at DESC", conn)
+            conn.close()
+            return df, None
+        except Exception as e:
+            return pd.DataFrame(), str(e)
+    
+    def delete_template(self, template_id):
+        """删除模板"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM email_templates WHERE id = ?", (template_id,))
+            conn.commit()
+            conn.close()
+            return True, None
+        except Exception as e:
+            return False, str(e)
+    
+    # =========================================================================
+    # 系统设置操作
+    # =========================================================================
+    def get_setting(self, key):
+        """获取系统设置"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT setting_value FROM system_settings WHERE setting_key = ?", (key,))
+            result = cursor.fetchone()
+            conn.close()
+            return result['setting_value'] if result else ""
+        except Exception as e:
+            return ""
+    
+    def update_setting(self, key, value):
+        """更新系统设置"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT OR REPLACE INTO system_settings (setting_key, setting_value, updated_at)
+                VALUES (?, ?, ?)
+            """, (key, value, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+            conn.commit()
+            conn.close()
+            return True, None
+        except Exception as e:
+            return False, str(e)
+    
+    # =========================================================================
     # 知识库操作
     # =========================================================================
     def add_knowledge(self, category, title, content):
@@ -497,18 +772,6 @@ class Database:
             return True, None
         except Exception as e:
             return False, str(e)
-    
-    def get_knowledge_by_category(self, category):
-        """按分类获取知识库"""
-        try:
-            conn = self.get_connection()
-            df = pd.read_sql("""
-                SELECT * FROM knowledge_base WHERE category = ? ORDER BY created_at DESC
-            """, conn, params=(category,))
-            conn.close()
-            return df, None
-        except Exception as e:
-            return pd.DataFrame(), str(e)
     
     def get_all_knowledge(self):
         """获取所有知识库"""
@@ -556,23 +819,19 @@ def get_follow_up_reminders():
     today = datetime.now().date()
     week_end = today + timedelta(days=7)
     
-    # 转换日期格式
     df['follow_up_date'] = pd.to_datetime(df['follow_up_date']).dt.date
     
-    # 今日需要跟进
     today_follow = df[
         (df['follow_up_date'] == today) & 
         (df['status'] != '拒绝')
     ].sort_values('follow_up_date')
     
-    # 本周需要跟进
     week_follow = df[
         (df['follow_up_date'] > today) & 
         (df['follow_up_date'] <= week_end) & 
         (df['status'] != '拒绝')
     ].sort_values('follow_up_date')
     
-    # 已过期的跟进任务
     overdue = df[
         (df['follow_up_date'] < today) & 
         (df['status'] != '拒绝') &
@@ -622,12 +881,9 @@ def render_home_page():
     st.title("📊 PPE客户开发工作区")
     st.markdown("---")
     
-    # ========== 数据统计面板 ==========
     st.header("📈 数据概览")
-    
     stats = get_statistics()
     
-    # 第一行统计卡片
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         render_stat_card("总客户数", stats['total'], "#3b82f6")
@@ -638,7 +894,6 @@ def render_home_page():
     with col4:
         render_stat_card("转化率", f"{stats['conversion_rate']}%", "#8b5cf6")
     
-    # 第二行统计
     col1, col2, col3 = st.columns(3)
     with col1:
         render_stat_card("B级客户", stats['grade_b'], "#3b82f6")
@@ -647,11 +902,16 @@ def render_home_page():
     with col3:
         render_stat_card("已拒绝", stats['status_rejected'], "#ef4444")
     
+    # A级客户占比进度条
+    st.markdown("---")
+    st.subheader("🎯 A级客户占比")
+    if stats['total'] > 0:
+        st.progress(stats['grade_a'] / stats['total'])
+        st.caption(f"A级客户 {stats['grade_a']} / 总客户 {stats['total']}")
+    
     st.markdown("---")
     
-    # ========== 跟进提醒模块 ==========
     reminders = get_follow_up_reminders()
-    
     col1, col2 = st.columns(2)
     
     with col1:
@@ -677,7 +937,6 @@ def render_home_page():
     
     st.markdown("---")
     
-    # ========== 国家分布 ==========
     st.subheader("🌍 国家分布")
     if stats['countries']:
         country_df = pd.DataFrame({
@@ -691,21 +950,50 @@ def render_customer_list():
     st.title("👥 客户管理")
     st.markdown("---")
     
-    # 搜索和筛选
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         search = st.text_input("🔍 搜索客户名称/邮箱")
     with col2:
         grade_filter = st.selectbox("客户等级", ["全部", "A", "B", "C"])
     with col3:
         status_filter = st.selectbox("状态", ["全部", "正在跟进", "备选", "拒绝"])
+    with col4:
+        if st.button("📥 Excel批量导入", type="primary"):
+            st.session_state['show_import'] = True
+            st.rerun()
+    
+    # 批量导入弹窗
+    if st.session_state.get('show_import'):
+        with st.expander("📥 Excel批量导入客户", expanded=True):
+            st.info("支持字段：company_name, contact_person, email, phone, country, linkedin, website, products, notes, customer_grade, status")
+            uploaded_file = st.file_uploader("上传Excel文件", type=['xlsx', 'xls'])
+            
+            if uploaded_file:
+                try:
+                    df = pd.read_excel(uploaded_file)
+                    st.write(f"检测到 {len(df)} 条数据，预览：")
+                    st.dataframe(df.head(), use_container_width=True)
+                    
+                    if st.button("✅ 开始导入", type="primary"):
+                        success, duplicate, error, err_msg = db.batch_import_customers(df)
+                        if err_msg:
+                            st.error(f"导入失败: {err_msg}")
+                        else:
+                            st.success(f"导入完成！成功: {success} 条，重复: {duplicate} 条，失败: {error} 条")
+                            st.session_state['show_import'] = False
+                            st.rerun()
+                except Exception as e:
+                    st.error(f"文件读取失败: {str(e)}")
+            
+            if st.button("取消"):
+                st.session_state['show_import'] = False
+                st.rerun()
     
     df, error = db.get_all_customers()
     if error:
         st.error(f"数据库错误: {error}")
         return
     
-    # 应用筛选
     if search:
         df = df[df['company_name'].str.contains(search, case=False, na=False) | 
                 df['email'].str.contains(search, case=False, na=False)]
@@ -714,14 +1002,12 @@ def render_customer_list():
     if status_filter != "全部":
         df = df[df['status'] == status_filter]
     
-    # 添加新客户按钮
     if st.button("➕ 添加新客户", type="primary"):
         st.session_state['show_add_form'] = True
         st.rerun()
     
     st.markdown("---")
     
-    # 客户列表展示
     if len(df) == 0:
         st.info("暂无客户数据")
         return
@@ -730,9 +1016,7 @@ def render_customer_list():
         grade_class = f"grade-{row['customer_grade'].lower()}"
         status_class = f"status-{'active' if row['status'] == '正在跟进' else 'pending' if row['status'] == '备选' else 'rejected'}"
         
-        linkedin_link = ""
-        if row['linkedin'] and row['linkedin'].strip():
-            linkedin_link = f'<a href="{row["linkedin"]}" target="_blank">🔗 LinkedIn</a>'
+        linkedin_link = f'<a href="{row["linkedin"]}" target="_blank">🔗 LinkedIn</a>' if row['linkedin'] and row['linkedin'].strip() else ""
         
         st.markdown(f"""
         <div class="customer-card">
@@ -750,7 +1034,7 @@ def render_customer_list():
                 </div>
             </div>
             <div style="margin-top: 0.75rem; font-size: 0.875rem; color: #475569;">
-                {row['contact_person']} | {row['email']} | {row['phone']}
+                {row['contact_person']} | {row['email']} | {row['whatsapp'] or row['phone']}
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -795,7 +1079,6 @@ def render_customer_detail():
     
     st.markdown("---")
     
-    # 基本信息
     col1, col2 = st.columns(2)
     
     with col1:
@@ -803,14 +1086,10 @@ def render_customer_detail():
         st.write(f"**联系人:** {customer['contact_person']}")
         st.write(f"**邮箱:** {customer['email']}")
         st.write(f"**电话:** {customer['phone']}")
+        st.write(f"**WhatsApp:** {customer.get('whatsapp', '未填写')}")
         st.write(f"**国家:** {customer['country']}")
-        
-        # LinkedIn链接
         if customer['linkedin'] and customer['linkedin'].strip():
             st.markdown(f"**LinkedIn:** <a href='{customer['linkedin']}' target='_blank'>🔗 打开LinkedIn</a>", unsafe_allow_html=True)
-        else:
-            st.write("**LinkedIn:** 未填写")
-        
         st.write(f"**网站:** {customer['website']}")
     
     with col2:
@@ -824,14 +1103,11 @@ def render_customer_detail():
     
     st.markdown("---")
     
-    # ========== 样品管理信息 ==========
     st.subheader("📦 样品管理")
     sample_status = customer.get('sample_status', '未寄出')
     sample_status_class = {
-        '未寄出': 'sample-not-sent',
-        '已寄出': 'sample-sent',
-        '已收到': 'sample-received',
-        '已反馈': 'sample-feedback'
+        '未寄出': 'sample-not-sent', '已寄出': 'sample-sent', 
+        '已收到': 'sample-received', '已反馈': 'sample-feedback'
     }.get(sample_status, 'sample-not-sent')
     
     col1, col2, col3 = st.columns(3)
@@ -847,13 +1123,31 @@ def render_customer_detail():
     
     st.markdown("---")
     
-    # 备注信息
+    # 跟进时间轴
+    st.subheader("📅 跟进时间轴")
+    timeline, _ = db.get_customer_timeline(customer_id)
+    if len(timeline) == 0:
+        st.info("暂无跟进记录")
+    else:
+        for _, event in timeline.iterrows():
+            st.markdown(f"""
+            <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div class="timeline-date">{event['created_at']}</div>
+                <div class="timeline-content">
+                    <strong>{event['event_type']}</strong><br>
+                    {event['event_content']}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
     st.subheader("📝 备注信息")
     st.write(customer['notes'] if customer['notes'] else "暂无备注")
     
     st.markdown("---")
     
-    # ========== 邮件历史记录 ==========
     st.subheader("📧 邮件历史记录")
     email_history, error = db.get_email_history(customer_id)
     
@@ -870,7 +1164,6 @@ def render_customer_detail():
     
     st.markdown("---")
     
-    # 操作按钮
     col1, col2, col3 = st.columns(3)
     with col1:
         if st.button("✏️ 编辑客户信息"):
@@ -917,6 +1210,7 @@ def render_customer_form(is_edit=False):
             contact_person = st.text_input("联系人", value=customer['contact_person'] if customer else "")
             email = st.text_input("邮箱", value=customer['email'] if customer else "")
             phone = st.text_input("电话", value=customer['phone'] if customer else "")
+            whatsapp = st.text_input("WhatsApp", value=customer.get('whatsapp', '') if customer else "")
             country = st.text_input("国家", value=customer['country'] if customer else "")
             linkedin = st.text_input("LinkedIn链接", value=customer['linkedin'] if customer else "")
             website = st.text_input("网站", value=customer['website'] if customer else "")
@@ -935,7 +1229,7 @@ def render_customer_form(is_edit=False):
             sample_status = st.selectbox("样品状态", ["未寄出", "已寄出", "已收到", "已反馈"], 
                 index=["未寄出", "已寄出", "已收到", "已反馈"].index(customer.get('sample_status', '未寄出')) if customer else 0)
         with col2:
-            sample_send_date = st.date_input("寄出日期", value=pd.to_datetime(customer.get('sample_send_date')).date() if customer and customer.get('sample_send_date') else None)
+            sample_send_date = st.date_input("寄出日期", value=pd.to_datetime(customer.get('sample_send_date')).date() if customer and customer.get('sample_send_date') else datetime.now().date())
         with col3:
             sample_tracking_number = st.text_input("快递单号", value=customer.get('sample_tracking_number', '') if customer else "")
         
@@ -947,7 +1241,6 @@ def render_customer_form(is_edit=False):
         submitted = st.form_submit_button("💾 保存客户信息", type="primary")
         
         if submitted:
-            # 基础校验
             if not company_name.strip():
                 st.error("公司名称不能为空！")
                 return
@@ -957,6 +1250,7 @@ def render_customer_form(is_edit=False):
                 'contact_person': contact_person,
                 'email': email,
                 'phone': phone,
+                'whatsapp': whatsapp,
                 'country': country,
                 'linkedin': linkedin,
                 'website': website,
@@ -966,7 +1260,7 @@ def render_customer_form(is_edit=False):
                 'products': products,
                 'follow_up_date': follow_up_date.strftime('%Y-%m-%d'),
                 'sample_status': sample_status,
-                'sample_send_date': sample_send_date.strftime('%Y-%m-%d') if sample_send_date else None,
+                'sample_send_date': sample_send_date.strftime('%Y-%m-%d'),
                 'sample_tracking_number': sample_tracking_number,
                 'sample_feedback': sample_feedback,
                 'notes': notes
@@ -1009,43 +1303,46 @@ def render_ai_email():
     
     st.info(f"正在为 **{customer['company_name']}** 生成开发邮件")
     
-    # 邮件模板选择
+    # 加载系统设置
+    company_intro = db.get_setting('company_intro')
+    ai_prompt = db.get_setting('ai_email_prompt')
+    
+    with st.expander("📚 参考公司知识库（自动加载）"):
+        st.text_area("公司介绍", value=company_intro, height=150, disabled=True)
+        st.text_area("AI生成规则", value=ai_prompt, height=150, disabled=True)
+    
+    # 模板选择
+    templates, _ = db.get_all_templates()
+    if len(templates) > 0:
+        st.subheader("📑 选择模板")
+        template_id = st.selectbox("调用已有模板", ["不使用模板"] + [f"{row['name']} (ID:{row['id']})" for _, row in templates.iterrows()])
+        
+        if template_id != "不使用模板":
+            selected_id = int(template_id.split("ID:")[1].replace(")", ""))
+            template = templates[templates['id'] == selected_id].iloc[0]
+            st.session_state['generated_email'] = {'subject': template['subject'], 'content': template['content']}
+    
     template_type = st.selectbox("邮件类型", [
-        "初次开发邮件",
-        "跟进回复邮件",
-        "样品推荐邮件",
-        "节日问候邮件",
-        "新产品推广邮件"
+        "初次开发邮件", "跟进回复邮件", "样品推荐邮件", 
+        "节日问候邮件", "新产品推广邮件"
     ])
     
-    # 产品信息
-    our_products = st.text_area("我们的产品优势", 
-        value="""我们专业生产：
-- 芳纶1313/1414防护面料（FRA、AW、PA系列）
-- HPPE防切割面料
-- PANOX预氧化丝
-- 各类工业防护服装面料""",
-        height=100
-    )
+    our_products = st.text_area("我们的产品优势", value=company_intro, height=100)
     
     if st.button("✨ 生成邮件", type="primary"):
         with st.spinner("正在生成邮件..."):
-            # 模拟AI生成邮件（实际项目中可接入LLM API）
             if template_type == "初次开发邮件":
-                subject = f"High Quality PPE Materials Supplier - {customer['company_name']}"
+                subject = f"High Quality PPE Materials - {customer['company_name']}"
                 content = f"""Dear {customer['contact_person'] or 'Sir/Madam'},
 
 Hope this email finds you well!
 
 I noticed that {customer['company_name']} is a leading company in the {customer['industry'] or 'PPE'} industry, specializing in {customer['products'] or 'safety products'}.
 
-We are a professional manufacturer of high-performance protective textiles in China, with over 10 years of experience in this field. Our main products include:
-
+We are a professional manufacturer of high-performance protective textiles in China.
 {our_products}
 
-All our materials comply with international standards such as EN388, EN469, NFPA 2112, etc. We have supplied to many famous brands in Europe and America.
-
-Would you be interested in receiving our catalog or free samples for testing?
+All our materials comply with international standards. Would you be interested in receiving our catalog or free samples for testing?
 
 Looking forward to your reply!
 
@@ -1054,7 +1351,7 @@ Best regards,
 Sales Team
 """
             else:
-                subject = f"Following up on our previous communication - {customer['company_name']}"
+                subject = f"Following up - {customer['company_name']}"
                 content = f"""Dear {customer['contact_person'] or 'Sir/Madam'},
 
 Hope you are doing well!
@@ -1063,7 +1360,7 @@ I'm writing to follow up on our previous communication regarding your {customer[
 
 {our_products}
 
-Please let me know if you need any further information or samples.
+Please let me know if you need any further information.
 
 Best regards,
 [Your Name]
@@ -1071,7 +1368,6 @@ Best regards,
             
             st.session_state['generated_email'] = {'subject': subject, 'content': content}
     
-    # 显示生成的邮件
     if 'generated_email' in st.session_state:
         email = st.session_state['generated_email']
         
@@ -1081,7 +1377,7 @@ Best regards,
         subject = st.text_input("邮件主题", value=email['subject'])
         content = st.text_area("邮件内容", value=email['content'], height=400)
         
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         with col1:
             if st.button("💾 保存到邮件历史", type="primary"):
                 version, error = db.add_email_history(customer_id, subject, content)
@@ -1090,7 +1386,30 @@ Best regards,
                 else:
                     st.error(f"保存失败: {error}")
         with col2:
-            st.button("📋 复制邮件内容")
+            if st.button("📋 复制邮件内容"):
+                # JS实现复制
+                st.markdown(f"""
+                <script>
+                navigator.clipboard.writeText(`Subject: {subject}\n\n{content}`);
+                </script>
+                <div class="copy-success">✅ 已复制到剪贴板！</div>
+                """, unsafe_allow_html=True)
+        with col3:
+            if st.button("💾 保存为模板"):
+                st.session_state['show_save_template'] = True
+        
+        if st.session_state.get('show_save_template'):
+            with st.form("save_template"):
+                template_name = st.text_input("模板名称")
+                template_category = st.selectbox("分类", ["开发邮件", "跟进邮件", "样品邮件", "其他"])
+                if st.form_submit_button("保存"):
+                    success, error = db.add_email_template(template_name, template_category, subject, content)
+                    if success:
+                        st.success("模板保存成功！")
+                        st.session_state['show_save_template'] = False
+                        st.rerun()
+                    else:
+                        st.error(f"保存失败: {error}")
 
 def render_research():
     """渲染客户背景研究页面"""
@@ -1109,220 +1428,4 @@ def render_research():
         st.error("请先选择客户")
         return
     
-    st.subheader(f"研究对象: {customer['company_name']}")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        st.write(f"**国家:** {customer['country']}")
-        st.write(f"**行业:** {customer['industry']}")
-    with col2:
-        if customer['website']:
-            st.markdown(f"**网站:** [{customer['website']}]({customer['website']})")
-        if customer['linkedin']:
-            st.markdown(f"**LinkedIn:** [打开链接]({customer['linkedin']})")
-    
-    st.markdown("---")
-    
-    # 研究方向选择
-    research_areas = st.multiselect("研究方向", [
-        "公司基本信息",
-        "产品线分析",
-        "市场定位",
-        "竞争对手分析",
-        "采购决策链",
-        "近期动态"
-    ], default=["公司基本信息", "产品线分析"])
-    
-    if st.button("🔬 开始研究", type="primary"):
-        with st.spinner("正在进行背景研究..."):
-            # 模拟研究结果
-            st.success("研究完成！")
-            
-            st.markdown("---")
-            st.subheader("📊 研究报告")
-            
-            st.markdown("""
-            ### 1. 公司基本信息
-            - **行业地位:** 该客户在当地PPE市场具有一定影响力
-            - **成立时间:** 推测为5-10年
-            - **员工规模:** 中等规模企业
-            
-            ### 2. 产品线分析
-            - 主要专注于工业防护领域
-            - 产品覆盖手部防护、身体防护等多个类别
-            
-            ### 3. 市场定位
-            - 中高端市场定位
-            - 主要客户群体为工业制造企业
-            
-            ### 4. 建议跟进策略
-            1. 重点突出我们的认证和质量优势
-            2. 提供样品进行测试对比
-            3. 强调我们的稳定供货能力
-            """)
-            
-            # 保存研究笔记到客户备注
-            if st.button("📝 保存研究结果到客户备注", type="primary"):
-                research_notes = f"""
-背景研究结果 - {datetime.now().strftime('%Y-%m-%d')}
-研究方向: {', '.join(research_areas)}
-
-1. 公司基本信息: 该客户在当地PPE市场具有一定影响力
-2. 产品线分析: 主要专注于工业防护领域
-3. 市场定位: 中高端市场定位
-4. 跟进策略建议: 重点突出认证优势，提供样品测试
-                """
-                current_notes = customer['notes'] or ""
-                success, error = db.update_customer(customer_id, {'notes': current_notes + "\n\n" + research_notes})
-                if success:
-                    st.success("已保存到客户备注！")
-                else:
-                    st.error(f"保存失败: {error}")
-
-def render_knowledge_base():
-    """渲染知识库"""
-    st.title("📚 知识库")
-    st.markdown("---")
-    
-    tab1, tab2 = st.tabs(["查看知识库", "添加新知识"])
-    
-    with tab1:
-        category_filter = st.selectbox("分类筛选", ["全部", "产品知识", "开发技巧", "市场信息", "其他"])
-        
-        df, error = db.get_all_knowledge()
-        if error:
-            st.error(f"获取知识库失败: {error}")
-        else:
-            if category_filter != "全部":
-                df = df[df['category'] == category_filter]
-            
-            if len(df) == 0:
-                st.info("暂无知识库内容")
-            else:
-                for _, row in df.iterrows():
-                    with st.expander(f"[{row['category']}] {row['title']}"):
-                        st.markdown(row['content'])
-                        st.caption(f"创建时间: {row['created_at']}")
-    
-    with tab2:
-        with st.form("add_knowledge"):
-            category = st.selectbox("分类", ["产品知识", "开发技巧", "市场信息", "其他"])
-            title = st.text_input("标题")
-            content = st.text_area("内容", height=200)
-            
-            if st.form_submit_button("添加", type="primary"):
-                if not title or not content:
-                    st.error("请填写标题和内容")
-                else:
-                    success, error = db.add_knowledge(category, title, content)
-                    if success:
-                        st.success("添加成功！")
-                        st.rerun()
-                    else:
-                        st.error(f"添加失败: {error}")
-
-def render_data_export():
-    """渲染数据导出页面"""
-    st.title("📤 数据导出")
-    st.markdown("---")
-    
-    df, error = db.get_all_customers()
-    if error:
-        st.error(f"获取数据失败: {error}")
-        return
-    
-    st.subheader("客户数据概览")
-    st.dataframe(df, use_container_width=True)
-    
-    st.markdown("---")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("导出为CSV")
-        csv = df.to_csv(index=False, encoding='utf-8-sig')
-        st.download_button(
-            label="📥 下载CSV文件",
-            data=csv,
-            file_name=f"ppe_customers_{datetime.now().strftime('%Y%m%d')}.csv",
-            mime="text/csv"
-        )
-    
-    with col2:
-        st.subheader("导出为Excel")
-        # 生成Excel文件
-        buffer = io.BytesIO()
-        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-            df.to_excel(writer, sheet_name='客户数据', index=False)
-        
-        st.download_button(
-            label="📥 下载Excel文件",
-            data=buffer.getvalue(),
-            file_name=f"ppe_customers_{datetime.now().strftime('%Y%m%d')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-    
-    st.markdown("---")
-    st.subheader("数据库备份")
-    st.info("数据库文件: ppe_customers.db\n建议定期备份此文件以防数据丢失")
-
-# =============================================================================
-# 主程序
-# =============================================================================
-def main():
-    # 初始化session state
-    if 'current_page' not in st.session_state:
-        st.session_state['current_page'] = "首页"
-    
-    # 侧边栏导航
-    with st.sidebar:
-        st.title("📊 PPE客户开发")
-        st.markdown("---")
-        
-        if st.button("🏠 首页", use_container_width=True):
-            st.session_state['current_page'] = "首页"
-            st.rerun()
-        
-        if st.button("👥 客户管理", use_container_width=True):
-            st.session_state['current_page'] = "客户列表"
-            st.rerun()
-        
-        if st.button("📚 知识库", use_container_width=True):
-            st.session_state['current_page'] = "知识库"
-            st.rerun()
-        
-        if st.button("📤 数据导出", use_container_width=True):
-            st.session_state['current_page'] = "数据导出"
-            st.rerun()
-        
-        st.markdown("---")
-        st.caption(f"更新时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-        st.caption("PPE客户开发工作区 v2.1 (已修复BUG)")
-    
-    # 页面路由
-    current_page = st.session_state['current_page']
-    
-    if current_page == "首页":
-        render_home_page()
-    elif current_page == "客户列表":
-        if st.session_state.get('show_add_form'):
-            render_customer_form(is_edit=False)
-        else:
-            render_customer_list()
-    elif current_page == "客户详情":
-        render_customer_detail()
-    elif current_page == "编辑客户":
-        render_customer_form(is_edit=True)
-    elif current_page == "AI邮件生成":
-        render_ai_email()
-    elif current_page == "客户背景研究":
-        render_research()
-    elif current_page == "知识库":
-        render_knowledge_base()
-    elif current_page == "数据导出":
-        render_data_export()
-    else:
-        render_home_page()
-
-if __name__ == "__main__":
-    main()
+    st.subheader(f
