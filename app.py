@@ -27,6 +27,15 @@ st.set_page_config(
     }
 )
 
+# 隐藏Streamlit自动生成的英文导航
+st.markdown("""
+<style>
+    [data-testid="stSidebarNav"] {
+        display: none;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # Session State 初始化
 if 'current_page' not in st.session_state:
     st.session_state['current_page'] = "首页"
@@ -49,7 +58,7 @@ if 'ai_email_customer' not in st.session_state:
 if 'research_customer' not in st.session_state:
     st.session_state['research_customer'] = None
 
-# 侧边栏导航
+# 侧边栏导航（纯中文）
 with st.sidebar:
     st.title("📊 PPE客户开发")
     st.markdown("---")
@@ -60,6 +69,14 @@ with st.sidebar:
 
     if st.button("👥 客户管理", use_container_width=True):
         st.session_state['current_page'] = "客户管理"
+        st.rerun()
+
+    if st.button("🤖 AI邮件生成", use_container_width=True):
+        st.session_state['current_page'] = "AI邮件生成"
+        st.rerun()
+
+    if st.button("🔍 客户背景研究", use_container_width=True):
+        st.session_state['current_page'] = "客户背景研究"
         st.rerun()
 
     st.markdown("---")
@@ -80,12 +97,6 @@ elif page == "客户管理":
         render_customer_detail()
     else:
         render_customer_list()
-
-elif page == "客户详情":
-    render_customer_detail()
-
-elif page == "编辑客户":
-    render_customer_form(is_edit=True)
 
 elif page == "AI邮件生成":
     render_ai_email()
