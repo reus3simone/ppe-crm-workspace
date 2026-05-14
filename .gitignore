@@ -1,0 +1,23 @@
+# 虚拟环境（绝对不能上传！）
+venv/
+env/
+.venv/
+
+# Python缓存文件
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 数据库文件（可选：如果不想上传客户数据就保留这行）
+# ppe_customers.db
+
+# Streamlit配置
+.streamlit/
+
+# 系统垃圾文件
+.DS_Store
+Thumbs.db
+
+# 日志文件
+*.log
