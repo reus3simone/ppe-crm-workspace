@@ -88,6 +88,18 @@ def render_customer_list():
     if dev_filter != "全部":
         df = df[df['development_status'] == dev_filter]
 
+    # 首页"今日待跟进"筛选：follow_up_date <= 今天
+    if home_filter == 'followup':
+        today = datetime.now().date()
+        def _is_due(fud):
+            if not fud or pd.isna(fud):
+                return False
+            try:
+                return pd.to_datetime(fud).date() <= today
+            except Exception:
+                return False
+        df = df[df['follow_up_date'].apply(_is_due)]
+
     # 新增客户
     if st.button("➕ 新建客户档案", type="primary"):
         st.session_state['show_add_form'] = True
@@ -99,6 +111,7 @@ def render_customer_list():
         return
 
     # 客户列表卡片
+    today = datetime.now().date()
     for _, row in df.iterrows():
         company_name = html.escape(str(row['company_name']))
         country_show = html.escape(str(row['country'])) if pd.notna(row['country']) else "未知国家"
@@ -110,6 +123,20 @@ def render_customer_list():
         if pd.notna(row['linkedin']) and str(row['linkedin']).strip():
             linkedin_html = f'<a href="{html.escape(str(row["linkedin"]))}" target="_blank" style="margin-left:8px;">🔗 LinkedIn</a>'
 
+        # 逾期标记
+        overdue_html = ""
+        fud = row.get('follow_up_date')
+        if fud and pd.notna(fud):
+            try:
+                fud_date = pd.to_datetime(fud).date()
+                if fud_date < today:
+                    days = (today - fud_date).days
+                    overdue_html = f'<span style="background:#fef2f2;color:#dc2626;padding:2px 8px;border-radius:10px;font-size:0.7rem;font-weight:600;margin-left:6px;">⚠ 逾期{days}天</span>'
+                elif fud_date == today:
+                    overdue_html = f'<span style="background:#fef9e7;color:#b45309;padding:2px 8px;border-radius:10px;font-size:0.7rem;font-weight:600;margin-left:6px;">📅 今日</span>'
+            except Exception:
+                pass
+
         grade = str(row['customer_grade'])
         grade_display = f"{grade}级" if grade in ('A', 'B', 'C') else html.escape(grade)
         grade_css = f"grade-{grade.lower()}" if grade.lower() in ('a', 'b', 'c') else "grade-c"
@@ -118,7 +145,7 @@ def render_customer_list():
         <div class="customer-card">
             <div style="display: flex; justify-content: space-between; align-items: start;">
                 <div>
-                    <h4 style="margin:0;">{company_name}</h4>
+                    <h4 style="margin:0;">{company_name}{overdue_html}</h4>
                     <div style="margin-top:6px;">
                         <span class="{grade_css}">{grade_display}</span>
                         <span style="margin:0 8px;" class="status-{"active" if row["status"] == "正在跟进" else "pending" if row["status"] == "备选" else "rejected"}">{html.escape(str(row['status']))}</span>
