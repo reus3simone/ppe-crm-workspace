@@ -1,212 +1,183 @@
-/* 全局背景与文字 */
+/* ========== 全局背景 ========== */
 .stApp {
-    background-color: #f8fafc;
+    background: #f3f6fa;
 }
 
-/* 主标题样式 */
-h1, h2, h3, h4 {
-    color: #1e293b !important;
-    font-weight: 600;
-}
-
-/* 普通文字 */
-p, span, div, label {
-    color: #1e293b !important;
-}
-
-/* 侧边栏样式 */
+/* ========== 侧边栏 ========== */
 [data-testid="stSidebar"] {
-    background-color: #e0f2fe;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    border-right: 1px solid #e8ecf1;
 }
 
-[data-testid="stSidebar"] > div:first-child {
-    background-color: #e0f2fe;
+[data-testid="stSidebar"] button {
+    transition: all 0.2s ease;
 }
 
-/* 按钮样式 - 清新蓝色系 */
+[data-testid="stSidebar"] button:hover {
+    background: #eef2ff !important;
+    transform: translateX(3px);
+}
+
+/* ========== 标题 ========== */
+h1 { color: #0f172a !important; font-weight: 700 !important; }
+h2 { color: #1e293b !important; font-weight: 600 !important; }
+h3 { color: #334155 !important; font-weight: 600 !important; }
+
+/* ========== 按钮 ========== */
 .stButton > button {
-    background-color: #3b82f6;
-    color: white !important;
-    border: none;
     border-radius: 8px;
-    padding: 0.5rem 1rem;
     font-weight: 500;
-    transition: all 0.3s ease;
+    border: none;
+    transition: all 0.2s;
 }
 
 .stButton > button:hover {
-    background-color: #2563eb;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59,130,246,0.25);
 }
 
-/* 次要按钮 */
+/* 主按钮 - 蓝色 */
+.stButton > button:not([kind]) {
+    background: #4f8fff;
+    color: white;
+}
+
+/* secondary - 灰色边框 */
 .stButton > button[kind="secondary"] {
-    background-color: #f1f5f9;
-    color: #475569 !important;
-    border: 1px solid #cbd5e1;
+    background: white;
+    color: #475569;
+    border: 1px solid #d1d5db;
 }
 
 .stButton > button[kind="secondary"]:hover {
-    background-color: #e2e8f0;
+    background: #f8fafc;
+    border-color: #94a3b8;
 }
 
-/* 危险按钮 */
+/* primary 用作危险按钮 */
 .stButton > button[kind="primary"] {
-    background-color: #ef4444;
-    color: white !important;
+    background: white;
+    color: #ef4444 !important;
+    border: 1px solid #fecaca;
 }
 
 .stButton > button[kind="primary"]:hover {
-    background-color: #dc2626;
+    background: #fef2f2;
+    box-shadow: 0 4px 12px rgba(239,68,68,0.15);
 }
 
-/* 输入框样式 */
-.stTextInput > div > div > input,
-.stTextArea > div > div > textarea,
-.stSelectbox > div > div > select,
-.stDateInput > div > div > input {
-    background-color: white;
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    color: #1e293b !important;
+/* ========== 输入框 ========== */
+.stTextInput input, .stTextArea textarea, .stSelectbox [data-baseweb="select"] {
+    border-radius: 8px !important;
+    border: 1px solid #dde1e7 !important;
+    background: white !important;
 }
 
-.stTextInput > div > div > input:focus,
-.stTextArea > div > div > textarea:focus,
-.stSelectbox > div > div > select:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+.stTextInput input:focus, .stTextArea textarea:focus {
+    border-color: #4f8fff !important;
+    box-shadow: 0 0 0 3px rgba(79,143,255,0.12) !important;
 }
 
-/* 卡片样式 */
-.stat-card {
+/* ========== 指标卡片 ========== */
+div[data-testid="stMetric"] {
     background: white;
-    padding: 1.5rem;
+    padding: 1.25rem;
     border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-    border-left: 4px solid #3b82f6;
-    margin-bottom: 1rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    border: 1px solid #eef1f5;
 }
 
-.stat-card h3 {
-    margin: 0;
-    font-size: 0.875rem;
+div[data-testid="stMetric"] label {
     color: #64748b !important;
+    font-size: 0.8rem;
     font-weight: 500;
 }
 
-.stat-card .value {
+div[data-testid="stMetric"] [data-testid="stMetricValue"] {
+    color: #0f172a !important;
     font-size: 2rem;
     font-weight: 700;
-    color: #1e293b !important;
-    margin: 0.5rem 0 0 0;
 }
 
-/* 提醒卡片 */
-.reminder-card {
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    padding: 1rem;
-    border-radius: 8px;
-    border-left: 4px solid #f59e0b;
-    margin-bottom: 0.5rem;
-}
-
-.reminder-card.urgent {
-    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-    border-left-color: #ef4444;
-}
-
-/* 客户卡片 */
+/* ========== 客户卡片 ========== */
 .customer-card {
     background: white;
-    padding: 1rem;
+    padding: 1rem 1.25rem;
     border-radius: 10px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-    margin-bottom: 0.75rem;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #eef1f5;
+    margin-bottom: 0.6rem;
+    transition: all 0.2s;
 }
 
 .customer-card:hover {
-    border-color: #3b82f6;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+    border-color: #4f8fff;
+    box-shadow: 0 4px 16px rgba(79,143,255,0.1);
 }
 
-/* 等级标签 */
+/* ========== 等级/状态标签 ========== */
 .grade-a {
-    background-color: #dcfce7;
-    color: #166534 !important;
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
+    background: #e6f7ec;
+    color: #15803d !important;
+    padding: 2px 10px;
+    border-radius: 12px;
     font-size: 0.75rem;
     font-weight: 600;
 }
 
 .grade-b {
-    background-color: #dbeafe;
-    color: #1e40af !important;
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
+    background: #eef2ff;
+    color: #3b5fd9 !important;
+    padding: 2px 10px;
+    border-radius: 12px;
     font-size: 0.75rem;
     font-weight: 600;
 }
 
 .grade-c {
-    background-color: #fef3c7;
-    color: #92400e !important;
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
+    background: #fef9e7;
+    color: #b45309 !important;
+    padding: 2px 10px;
+    border-radius: 12px;
     font-size: 0.75rem;
     font-weight: 600;
 }
 
-/* 状态标签 */
 .status-active {
-    background-color: #dcfce7;
-    color: #166534 !important;
+    background: #e6f7ec;
+    color: #15803d !important;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
 }
 
 .status-pending {
-    background-color: #fef3c7;
-    color: #92400e !important;
+    background: #fef9e7;
+    color: #b45309 !important;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
 }
 
 .status-rejected {
-    background-color: #fee2e2;
-    color: #991b1b !important;
+    background: #fef2f2;
+    color: #dc2626 !important;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
 }
 
-/* 样品状态标签 */
-.sample-not-sent {
-    background-color: #f1f5f9;
-    color: #475569 !important;
-}
-
-.sample-sent {
-    background-color: #dbeafe;
-    color: #1e40af !important;
-}
-
-.sample-received {
-    background-color: #fef3c7;
-    color: #92400e !important;
-}
-
-.sample-feedback {
-    background-color: #dcfce7;
-    color: #166534 !important;
-}
-
-/* 时间轴样式 */
+/* ========== 时间轴 ========== */
 .timeline-item {
     position: relative;
     padding-left: 2rem;
     padding-bottom: 1.5rem;
-    border-left: 2px solid #3b82f6;
+    border-left: 2px solid #cbd5e1;
 }
 
-.timeline-item:last-child {
-    border-left: none;
-}
+.timeline-item:last-child { border-left: none; }
 
 .timeline-dot {
     position: absolute;
@@ -215,47 +186,60 @@ p, span, div, label {
     width: 1rem;
     height: 1rem;
     border-radius: 50%;
-    background-color: #3b82f6;
+    background: #4f8fff;
     border: 3px solid white;
-    box-shadow: 0 0 0 2px #3b82f6;
+    box-shadow: 0 0 0 2px #4f8fff;
 }
 
 .timeline-date {
     font-size: 0.75rem;
-    color: #64748b;
-    font-weight: 600;
+    color: #94a3b8;
+    font-weight: 500;
 }
 
 .timeline-content {
-    background: white;
+    background: #f8fafc;
     padding: 0.75rem 1rem;
     border-radius: 8px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #eef1f5;
     margin-top: 0.25rem;
 }
 
-/* 模板卡片 */
-.template-card {
+/* ========== 统计卡片(首页自定义) ========== */
+.stat-card {
     background: white;
-    padding: 1rem;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-    margin-bottom: 0.75rem;
-    cursor: pointer;
-    transition: all 0.2s;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    border: 1px solid #eef1f5;
+    margin-bottom: 1rem;
 }
 
-.template-card:hover {
-    border-color: #3b82f6;
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+.stat-card h3 {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #64748b !important;
+    font-weight: 500;
 }
 
-/* 复制成功提示 */
-.copy-success {
-    background-color: #dcfce7;
-    color: #166534;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
+.stat-card .value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #0f172a !important;
     margin-top: 0.5rem;
-    text-align: center;
+}
+
+/* ========== Expander ========== */
+[data-testid="stExpander"] {
+    background: white;
+    border: 1px solid #eef1f5 !important;
+    border-radius: 10px !important;
+}
+
+/* ========== Form ========== */
+[data-testid="stForm"] {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 1px solid #eef1f5;
 }
