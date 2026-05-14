@@ -172,8 +172,9 @@ C级客户标准：
             pass
 
     def _extract_domain(self, email_or_website):
-        if not email_or_website:
+        if not email_or_website or str(email_or_website).strip() == '':
             return None
+        email_or_website = str(email_or_website).strip()
         if '@' in email_or_website:
             return email_or_website.split('@')[-1].lower()
         if '://' in email_or_website:
@@ -277,13 +278,17 @@ C级客户标准：
                     'customer_id': existing_id
                 }]
 
-            if new_domain and new_domain == (self._extract_domain(existing_email) or self._extract_domain(existing_website)):
+            # ✅ 修复：域名判断逻辑，彻底避开运算符坑
+            existing_email_domain = self._extract_domain(existing_email)
+            existing_website_domain = self._extract_domain(existing_website)
+            if new_domain and (new_domain == existing_email_domain or new_domain == existing_website_domain):
                 conflicts.append({
                     'level': 'warning',
                     'message': f"🟠 高度疑似！域名 {new_domain} 已存在于客户 {existing['company_name']}",
                     'details': f"可能是同一家集团/子公司，建议确认后再继续 | 负责人：{existing_assigned}",
                     'customer_id': existing_id
                 })
+
             if new_website and new_website == existing_website:
                 conflicts.append({
                     'level': 'warning',
@@ -345,11 +350,12 @@ C级客户标准：
             if conflict_level == 3:
                 return None, conflicts[0]['message']
             
+            # ✅ 修复：补全follow_up_date字段，支持导入带跟进日期
             fixed_fields = [
                 'company_name', 'contact_person', 'email', 'phone', 'whatsapp', 
                 'country', 'website', 'linkedin', 'industry', 'products', 
                 'source', 'development_status', 'notes', 'auto_score', 
-                'customer_grade', 'last_follow_up_date'
+                'customer_grade', 'last_follow_up_date', 'follow_up_date'
             ]
             
             score = self._calculate_auto_score(customer_data)
