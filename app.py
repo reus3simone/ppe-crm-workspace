@@ -5,6 +5,7 @@ import numpy as np
 from datetime import datetime, timedelta
 import json
 import os
+import io
 
 # =============================================================================
 # 页面配置与主题设置 - 清新浅色主题
@@ -76,14 +77,14 @@ st.markdown("""
         background-color: #e2e8f0;
     }
     
-    /* 成功按钮 */
-    .stButton > button[kind="success"] {
-        background-color: #10b981;
+    /* 成功按钮 - 自定义绿色 */
+    .stButton > button.success-btn {
+        background-color: #10b981 !important;
         color: white !important;
     }
     
-    .stButton > button[kind="success"]:hover {
-        background-color: #059669;
+    .stButton > button.success-btn:hover {
+        background-color: #059669 !important;
     }
     
     /* 危险按钮 */
@@ -367,124 +368,157 @@ class Database:
     # =========================================================================
     def add_customer(self, customer_data):
         """添加新客户"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        fields = list(customer_data.keys())
-        placeholders = ', '.join(['?' for _ in fields])
-        values = [customer_data[f] for f in fields]
-        
-        query = f"INSERT INTO customers ({', '.join(fields)}) VALUES ({placeholders})"
-        cursor.execute(query, values)
-        
-        customer_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
-        return customer_id
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            fields = list(customer_data.keys())
+            placeholders = ', '.join(['?' for _ in fields])
+            values = [customer_data[f] for f in fields]
+            
+            query = f"INSERT INTO customers ({', '.join(fields)}) VALUES ({placeholders})"
+            cursor.execute(query, values)
+            
+            customer_id = cursor.lastrowid
+            conn.commit()
+            conn.close()
+            return customer_id, None
+        except Exception as e:
+            return None, str(e)
     
     def update_customer(self, customer_id, customer_data):
         """更新客户信息"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        customer_data['updated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        
-        set_clause = ', '.join([f"{k} = ?" for k in customer_data.keys()])
-        values = list(customer_data.values()) + [customer_id]
-        
-        query = f"UPDATE customers SET {set_clause} WHERE id = ?"
-        cursor.execute(query, values)
-        
-        conn.commit()
-        conn.close()
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            customer_data['updated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            
+            set_clause = ', '.join([f"{k} = ?" for k in customer_data.keys()])
+            values = list(customer_data.values()) + [customer_id]
+            
+            query = f"UPDATE customers SET {set_clause} WHERE id = ?"
+            cursor.execute(query, values)
+            
+            conn.commit()
+            conn.close()
+            return True, None
+        except Exception as e:
+            return False, str(e)
     
     def delete_customer(self, customer_id):
         """删除客户"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM customers WHERE id = ?", (customer_id,))
-        cursor.execute("DELETE FROM email_history WHERE customer_id = ?", (customer_id,))
-        conn.commit()
-        conn.close()
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM customers WHERE id = ?", (customer_id,))
+            cursor.execute("DELETE FROM email_history WHERE customer_id = ?", (customer_id,))
+            conn.commit()
+            conn.close()
+            return True, None
+        except Exception as e:
+            return False, str(e)
     
     def get_customer(self, customer_id):
         """获取单个客户信息"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM customers WHERE id = ?", (customer_id,))
-        customer = cursor.fetchone()
-        conn.close()
-        return dict(customer) if customer else None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM customers WHERE id = ?", (customer_id,))
+            customer = cursor.fetchone()
+            conn.close()
+            return dict(customer) if customer else None, None
+        except Exception as e:
+            return None, str(e)
     
     def get_all_customers(self):
         """获取所有客户"""
-        conn = self.get_connection()
-        df = pd.read_sql("SELECT * FROM customers ORDER BY created_at DESC", conn)
-        conn.close()
-        return df
+        try:
+            conn = self.get_connection()
+            df = pd.read_sql("SELECT * FROM customers ORDER BY created_at DESC", conn)
+            conn.close()
+            return df, None
+        except Exception as e:
+            return pd.DataFrame(), str(e)
     
     # =========================================================================
     # 邮件历史操作
     # =========================================================================
     def add_email_history(self, customer_id, subject, content):
         """添加邮件历史记录"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        # 获取当前最大版本号
-        cursor.execute("SELECT MAX(version) FROM email_history WHERE customer_id = ?", (customer_id,))
-        max_version = cursor.fetchone()[0]
-        version = (max_version or 0) + 1
-        
-        cursor.execute("""
-            INSERT INTO email_history (customer_id, version, email_subject, email_content)
-            VALUES (?, ?, ?, ?)
-        """, (customer_id, version, subject, content))
-        
-        conn.commit()
-        conn.close()
-        return version
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            # 获取当前最大版本号
+            cursor.execute("SELECT MAX(version) FROM email_history WHERE customer_id = ?", (customer_id,))
+            max_version = cursor.fetchone()[0]
+            version = (max_version or 0) + 1
+            
+            cursor.execute("""
+                INSERT INTO email_history (customer_id, version, email_subject, email_content)
+                VALUES (?, ?, ?, ?)
+            """, (customer_id, version, subject, content))
+            
+            conn.commit()
+            conn.close()
+            return version, None
+        except Exception as e:
+            return None, str(e)
     
     def get_email_history(self, customer_id):
         """获取客户的邮件历史"""
-        conn = self.get_connection()
-        df = pd.read_sql("""
-            SELECT * FROM email_history 
-            WHERE customer_id = ? 
-            ORDER BY version DESC
-        """, conn, params=(customer_id,))
-        conn.close()
-        return df
+        try:
+            conn = self.get_connection()
+            df = pd.read_sql("""
+                SELECT * FROM email_history 
+                WHERE customer_id = ? 
+                ORDER BY version DESC
+            """, conn, params=(customer_id,))
+            conn.close()
+            return df, None
+        except Exception as e:
+            return pd.DataFrame(), str(e)
     
     # =========================================================================
     # 知识库操作
     # =========================================================================
     def add_knowledge(self, category, title, content):
         """添加知识库条目"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO knowledge_base (category, title, content)
-            VALUES (?, ?, ?)
-        """, (category, title, content))
-        conn.commit()
-        conn.close()
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO knowledge_base (category, title, content)
+                VALUES (?, ?, ?)
+            """, (category, title, content))
+            conn.commit()
+            conn.close()
+            return True, None
+        except Exception as e:
+            return False, str(e)
     
     def get_knowledge_by_category(self, category):
         """按分类获取知识库"""
-        conn = self.get_connection()
-        df = pd.read_sql("""
-            SELECT * FROM knowledge_base WHERE category = ? ORDER BY created_at DESC
-        """, conn, params=(category,))
-        conn.close()
-        return df
+        try:
+            conn = self.get_connection()
+            df = pd.read_sql("""
+                SELECT * FROM knowledge_base WHERE category = ? ORDER BY created_at DESC
+            """, conn, params=(category,))
+            conn.close()
+            return df, None
+        except Exception as e:
+            return pd.DataFrame(), str(e)
     
     def get_all_knowledge(self):
         """获取所有知识库"""
-        conn = self.get_connection()
-        df = pd.read_sql("SELECT * FROM knowledge_base ORDER BY created_at DESC", conn)
-        conn.close()
-        return df
+        try:
+            conn = self.get_connection()
+            df = pd.read_sql("SELECT * FROM knowledge_base ORDER BY created_at DESC", conn)
+            conn.close()
+            return df, None
+        except Exception as e:
+            return pd.DataFrame(), str(e)
 
 # 初始化数据库
 db = Database()
@@ -494,7 +528,7 @@ db = Database()
 # =============================================================================
 def get_statistics():
     """获取统计数据"""
-    df = db.get_all_customers()
+    df, _ = db.get_all_customers()
     
     if len(df) == 0:
         return {
@@ -518,7 +552,7 @@ def get_statistics():
 
 def get_follow_up_reminders():
     """获取跟进提醒"""
-    df = db.get_all_customers()
+    df, _ = db.get_all_customers()
     today = datetime.now().date()
     week_end = today + timedelta(days=7)
     
@@ -666,7 +700,10 @@ def render_customer_list():
     with col3:
         status_filter = st.selectbox("状态", ["全部", "正在跟进", "备选", "拒绝"])
     
-    df = db.get_all_customers()
+    df, error = db.get_all_customers()
+    if error:
+        st.error(f"数据库错误: {error}")
+        return
     
     # 应用筛选
     if search:
@@ -731,8 +768,11 @@ def render_customer_list():
                 st.rerun()
         with col3:
             if st.button("删除", key=f"del_{row['id']}", type="primary"):
-                db.delete_customer(row['id'])
-                st.success("删除成功")
+                success, error = db.delete_customer(row['id'])
+                if success:
+                    st.success("删除成功")
+                else:
+                    st.error(f"删除失败: {error}")
                 st.rerun()
 
 def render_customer_detail():
@@ -742,9 +782,9 @@ def render_customer_detail():
         st.error("请先选择客户")
         return
     
-    customer = db.get_customer(customer_id)
-    if not customer:
-        st.error("客户不存在")
+    customer, error = db.get_customer(customer_id)
+    if error or not customer:
+        st.error(f"获取客户信息失败: {error or '客户不存在'}")
         return
     
     st.title(f"📋 {customer['company_name']}")
@@ -815,9 +855,11 @@ def render_customer_detail():
     
     # ========== 邮件历史记录 ==========
     st.subheader("📧 邮件历史记录")
-    email_history = db.get_email_history(customer_id)
+    email_history, error = db.get_email_history(customer_id)
     
-    if len(email_history) == 0:
+    if error:
+        st.error(f"获取邮件历史失败: {error}")
+    elif len(email_history) == 0:
         st.info("暂无邮件历史记录")
     else:
         for _, email in email_history.iterrows():
@@ -850,7 +892,10 @@ def render_customer_form(is_edit=False):
     """渲染客户添加/编辑表单"""
     if is_edit:
         customer_id = st.session_state.get('edit_customer')
-        customer = db.get_customer(customer_id)
+        customer, error = db.get_customer(customer_id)
+        if error or not customer:
+            st.error("获取客户信息失败")
+            return
         st.title("✏️ 编辑客户")
     else:
         customer = None
@@ -902,8 +947,13 @@ def render_customer_form(is_edit=False):
         submitted = st.form_submit_button("💾 保存客户信息", type="primary")
         
         if submitted:
+            # 基础校验
+            if not company_name.strip():
+                st.error("公司名称不能为空！")
+                return
+            
             customer_data = {
-                'company_name': company_name,
+                'company_name': company_name.strip(),
                 'contact_person': contact_person,
                 'email': email,
                 'phone': phone,
@@ -923,11 +973,17 @@ def render_customer_form(is_edit=False):
             }
             
             if is_edit:
-                db.update_customer(customer_id, customer_data)
-                st.success("客户信息更新成功！")
+                success, error = db.update_customer(customer_id, customer_data)
+                if success:
+                    st.success("客户信息更新成功！")
+                else:
+                    st.error(f"更新失败: {error}")
             else:
-                db.add_customer(customer_data)
-                st.success("客户添加成功！")
+                customer_id, error = db.add_customer(customer_data)
+                if customer_id:
+                    st.success("客户添加成功！")
+                else:
+                    st.error(f"添加失败: {error}")
             
             st.session_state['current_page'] = "客户列表"
             if 'show_add_form' in st.session_state:
@@ -937,7 +993,7 @@ def render_customer_form(is_edit=False):
 def render_ai_email():
     """渲染AI邮件生成页面"""
     customer_id = st.session_state.get('ai_email_customer')
-    customer = db.get_customer(customer_id) if customer_id else None
+    customer, error = db.get_customer(customer_id) if customer_id else (None, None)
     
     st.title("🤖 AI开发邮件生成")
     
@@ -1027,16 +1083,19 @@ Best regards,
         
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("💾 保存到邮件历史", type="success"):
-                version = db.add_email_history(customer_id, subject, content)
-                st.success(f"邮件已保存！版本号: v{version}")
+            if st.button("💾 保存到邮件历史", type="primary"):
+                version, error = db.add_email_history(customer_id, subject, content)
+                if version:
+                    st.success(f"邮件已保存！版本号: v{version}")
+                else:
+                    st.error(f"保存失败: {error}")
         with col2:
             st.button("📋 复制邮件内容")
 
 def render_research():
     """渲染客户背景研究页面"""
     customer_id = st.session_state.get('research_customer')
-    customer = db.get_customer(customer_id) if customer_id else None
+    customer, error = db.get_customer(customer_id) if customer_id else (None, None)
     
     st.title("🔍 客户背景研究")
     
@@ -1103,7 +1162,7 @@ def render_research():
             """)
             
             # 保存研究笔记到客户备注
-            if st.button("📝 保存研究结果到客户备注"):
+            if st.button("📝 保存研究结果到客户备注", type="primary"):
                 research_notes = f"""
 背景研究结果 - {datetime.now().strftime('%Y-%m-%d')}
 研究方向: {', '.join(research_areas)}
@@ -1114,8 +1173,11 @@ def render_research():
 4. 跟进策略建议: 重点突出认证优势，提供样品测试
                 """
                 current_notes = customer['notes'] or ""
-                db.update_customer(customer_id, {'notes': current_notes + "\n\n" + research_notes})
-                st.success("已保存到客户备注！")
+                success, error = db.update_customer(customer_id, {'notes': current_notes + "\n\n" + research_notes})
+                if success:
+                    st.success("已保存到客户备注！")
+                else:
+                    st.error(f"保存失败: {error}")
 
 def render_knowledge_base():
     """渲染知识库"""
@@ -1127,17 +1189,20 @@ def render_knowledge_base():
     with tab1:
         category_filter = st.selectbox("分类筛选", ["全部", "产品知识", "开发技巧", "市场信息", "其他"])
         
-        df = db.get_all_knowledge()
-        if category_filter != "全部":
-            df = df[df['category'] == category_filter]
-        
-        if len(df) == 0:
-            st.info("暂无知识库内容")
+        df, error = db.get_all_knowledge()
+        if error:
+            st.error(f"获取知识库失败: {error}")
         else:
-            for _, row in df.iterrows():
-                with st.expander(f"[{row['category']}] {row['title']}"):
-                    st.markdown(row['content'])
-                    st.caption(f"创建时间: {row['created_at']}")
+            if category_filter != "全部":
+                df = df[df['category'] == category_filter]
+            
+            if len(df) == 0:
+                st.info("暂无知识库内容")
+            else:
+                for _, row in df.iterrows():
+                    with st.expander(f"[{row['category']}] {row['title']}"):
+                        st.markdown(row['content'])
+                        st.caption(f"创建时间: {row['created_at']}")
     
     with tab2:
         with st.form("add_knowledge"):
@@ -1146,19 +1211,25 @@ def render_knowledge_base():
             content = st.text_area("内容", height=200)
             
             if st.form_submit_button("添加", type="primary"):
-                if title and content:
-                    db.add_knowledge(category, title, content)
-                    st.success("添加成功！")
-                    st.rerun()
-                else:
+                if not title or not content:
                     st.error("请填写标题和内容")
+                else:
+                    success, error = db.add_knowledge(category, title, content)
+                    if success:
+                        st.success("添加成功！")
+                        st.rerun()
+                    else:
+                        st.error(f"添加失败: {error}")
 
 def render_data_export():
     """渲染数据导出页面"""
     st.title("📤 数据导出")
     st.markdown("---")
     
-    df = db.get_all_customers()
+    df, error = db.get_all_customers()
+    if error:
+        st.error(f"获取数据失败: {error}")
+        return
     
     st.subheader("客户数据概览")
     st.dataframe(df, use_container_width=True)
@@ -1180,10 +1251,9 @@ def render_data_export():
     with col2:
         st.subheader("导出为Excel")
         # 生成Excel文件
-        import io
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-            df.toExcel(writer, sheet_name='客户数据', index=False)
+            df.to_excel(writer, sheet_name='客户数据', index=False)
         
         st.download_button(
             label="📥 下载Excel文件",
@@ -1227,7 +1297,7 @@ def main():
         
         st.markdown("---")
         st.caption(f"更新时间: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-        st.caption("PPE客户开发工作区 v2.0")
+        st.caption("PPE客户开发工作区 v2.1 (已修复BUG)")
     
     # 页面路由
     current_page = st.session_state['current_page']
