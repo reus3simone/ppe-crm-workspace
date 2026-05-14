@@ -9,7 +9,7 @@ def render_research():
 
     st.title("🔍 客户背景深度调研")
     if st.button("← 返回客户详情"):
-        st.session_state['current_page'] = "客户详情"
+        st.session_state['current_page'] = "客户管理"
         st.rerun()
     st.markdown("---")
 
@@ -26,7 +26,9 @@ def render_research():
         st.write(f"**国家：** {customer.get('country', '未填写')}")
         st.write(f"**行业：** {customer.get('industry', '未填写')}")
         st.write(f"**主营产品：** {customer.get('products', '未填写')}")
-        st.write(f"**客户等级：** {customer['customer_grade']}级")
+        grade = str(customer.get('customer_grade', 'C'))
+        grade_display = f"{grade}级" if grade in ('A', 'B', 'C') else grade
+        st.write(f"**客户等级：** {grade_display}")
         st.write(f"**跟进状态：** {customer['status']}")
 
     with col2:
@@ -54,10 +56,12 @@ def render_research():
             st.error(f"保存失败：{error}")
 
     st.markdown("---")
-    st.subheader("📋 背调检查清单")
+    st.subheader("📋 背调检查清单（SOP十四·官网快筛）")
     st.checkbox("已查看公司官网，了解产品线")
     st.checkbox("已查看LinkedIn，找到关键联系人")
-    st.checkbox("已确认客户有PPE/防护相关业务")
+    st.checkbox("命中PPE/防护技术语言（EN388/EN11612/IEC61482/NFPA2112等）")
+    st.checkbox("有真实应用场景，非纯素材站")
+    st.checkbox("有开发能力（R&D/textile engineering/fabric development）")
+    st.checkbox("公司活跃（LinkedIn/新闻/展会/新品动态）")
     st.checkbox("已确认客户有欧洲/北美市场")
-    st.checkbox("已找到客户的认证信息")
-    st.checkbox("已分析客户的竞争对手")
+    st.checkbox("已提取1个钩子（产品线/新闻/认证/展会/材料词）")

@@ -1,6 +1,7 @@
 
 import streamlit as st
 import pandas as pd
+import html
 from datetime import datetime
 from database.db import Database
 
@@ -10,23 +11,43 @@ def render_customer_list():
     st.title("👥 客户全量管理")
     st.markdown("---")
 
+    # 处理首页跳转的筛选
+    home_filter = st.session_state.pop('home_filter', None)
+
     # 筛选栏
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
+    c1, c2, c3, c4, c5 = st.columns([2, 1, 1, 1, 1])
+    with c1:
         search_key = st.text_input("🔍 搜索公司名/邮箱")
-    with col2:
-        grade_filter = st.selectbox("客户等级", ["全部", "A", "B", "C"])
-    with col3:
+    with c2:
+        if home_filter and home_filter.startswith('grade_'):
+            default_grade = home_filter.split('_')[1]
+            grade_filter = st.selectbox("客户等级", ["全部", "A", "B", "C"],
+                index=["全部","A","B","C"].index(default_grade))
+        else:
+            grade_filter = st.selectbox("客户等级", ["全部", "A", "B", "C"])
+    with c3:
+        dev_status_options = ["全部", "初次开发", "已报价", "样品阶段"]
+        if home_filter in ('pending', 'quoted', 'sample'):
+            dev_map_idx = {'pending': 1, 'quoted': 2, 'sample': 3}
+            dev_filter = st.selectbox("开发状态", dev_status_options, index=dev_map_idx[home_filter])
+        else:
+            dev_filter = st.selectbox("开发状态", dev_status_options)
+    with c4:
         status_filter = st.selectbox("跟进状态", ["全部", "正在跟进", "备选", "拒绝"])
-    with col4:
-        if st.button("📥 Excel批量导入", type="primary"):
+    with c5:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("📥 批量导入", type="primary", use_container_width=True):
             st.session_state['show_import'] = True
             st.rerun()
 
     # 批量导入弹窗
     if st.session_state.get('show_import', False):
         with st.expander("📥 Excel批量导入客户", expanded=True):
-            st.info("支持字段：company_name, contact_person, email, phone, country, linkedin, website, products, notes, customer_grade, status, whatsapp")
+            st.info("""
+            **支持两种格式：**
+            - **客户跟进表格式**：公司、国家、公司定位、业务对接、联系方式、开发进度、客户意向、备注（自动解析邮箱/电话/联系人）
+            - **通用格式**：company_name、contact_person、email、phone、country、linkedin、website、products、notes、customer_grade
+            """)
             uploaded_file = st.file_uploader("上传.xlsx/.xls文件", type=['xlsx', 'xls'])
             if uploaded_file:
                 try:
@@ -64,6 +85,9 @@ def render_customer_list():
     if status_filter != "全部":
         df = df[df['status'] == status_filter]
 
+    if dev_filter != "全部":
+        df = df[df['development_status'] == dev_filter]
+
     # 新增客户
     if st.button("➕ 新建客户档案", type="primary"):
         st.session_state['show_add_form'] = True
@@ -76,23 +100,28 @@ def render_customer_list():
 
     # 客户列表卡片
     for _, row in df.iterrows():
-        country_show = row['country'] if pd.notna(row['country']) else "未知国家"
-        contact_show = row['contact_person'] if pd.notna(row['contact_person']) else "暂无联系人"
-        email_show = row['email'] if pd.notna(row['email']) else "暂无邮箱"
-        phone_show = row['whatsapp'] if pd.notna(row['whatsapp']) else (row['phone'] if pd.notna(row['phone']) else "暂无电话")
+        company_name = html.escape(str(row['company_name']))
+        country_show = html.escape(str(row['country'])) if pd.notna(row['country']) else "未知国家"
+        contact_show = html.escape(str(row['contact_person'])) if pd.notna(row['contact_person']) else "暂无联系人"
+        email_show = html.escape(str(row['email'])) if pd.notna(row['email']) else "暂无邮箱"
+        phone_show = html.escape(str(row['whatsapp'])) if pd.notna(row['whatsapp']) else (html.escape(str(row['phone'])) if pd.notna(row['phone']) else "暂无电话")
 
         linkedin_html = ""
-        if pd.notna(row['linkedin']) and row['linkedin'].strip():
-            linkedin_html = f'<a href="{row["linkedin"]}" target="_blank" style="margin-left:8px;">🔗 LinkedIn</a>'
+        if pd.notna(row['linkedin']) and str(row['linkedin']).strip():
+            linkedin_html = f'<a href="{html.escape(str(row["linkedin"]))}" target="_blank" style="margin-left:8px;">🔗 LinkedIn</a>'
+
+        grade = str(row['customer_grade'])
+        grade_display = f"{grade}级" if grade in ('A', 'B', 'C') else html.escape(grade)
+        grade_css = f"grade-{grade.lower()}" if grade.lower() in ('a', 'b', 'c') else "grade-c"
 
         st.markdown(f"""
         <div class="customer-card">
             <div style="display: flex; justify-content: space-between; align-items: start;">
                 <div>
-                    <h4 style="margin:0;">{row['company_name']}</h4>
+                    <h4 style="margin:0;">{company_name}</h4>
                     <div style="margin-top:6px;">
-                        <span class="grade-{row['customer_grade'].lower()}">{row['customer_grade']}级</span>
-                        <span style="margin:0 8px;" class="status-{"active" if row["status"] == "正在跟进" else "pending" if row["status"] == "备选" else "rejected"}">{row['status']}</span>
+                        <span class="{grade_css}">{grade_display}</span>
+                        <span style="margin:0 8px;" class="status-{"active" if row["status"] == "正在跟进" else "pending" if row["status"] == "备选" else "rejected"}">{html.escape(str(row['status']))}</span>
                     </div>
                 </div>
                 <div style="text-align:right;">
@@ -111,12 +140,10 @@ def render_customer_list():
         with c1:
             if st.button("查看详情", key=f"v_{row['id']}"):
                 st.session_state['selected_customer'] = row['id']
-                st.session_state['current_page'] = "客户详情"
                 st.rerun()
         with c2:
             if st.button("编辑", key=f"e_{row['id']}"):
                 st.session_state['edit_customer'] = row['id']
-                st.session_state['current_page'] = "编辑客户"
                 st.rerun()
         with c3:
             if st.button("删除", key=f"d_{row['id']}", type="primary"):
@@ -139,7 +166,7 @@ def render_customer_detail():
 
     st.title(f"📋 {customer['company_name']}")
     if st.button("← 返回列表"):
-        st.session_state['current_page'] = "客户列表"
+        st.session_state['selected_customer'] = None
         st.rerun()
     st.markdown("---")
 
@@ -157,7 +184,9 @@ def render_customer_detail():
         st.write(f"**官网：** {customer.get('website', '未填写')}")
     with col2:
         st.subheader("客户评级与状态")
-        st.write(f"**客户等级：** {customer['customer_grade']}级")
+        grade = str(customer.get('customer_grade', 'C'))
+        grade_display = f"{grade}级" if grade in ('A', 'B', 'C') else grade
+        st.write(f"**客户等级：** {grade_display}")
         st.write(f"**跟进状态：** {customer['status']}")
         st.write(f"**行业：** {customer.get('industry', '未填写')}")
         st.write(f"**主营产品：** {customer.get('products', '未填写')}")
@@ -215,7 +244,6 @@ def render_customer_detail():
     with col1:
         if st.button("✏️ 修改客户信息"):
             st.session_state['edit_customer'] = cid
-            st.session_state['current_page'] = "编辑客户"
             st.rerun()
     with col2:
         if st.button("🤖 AI生成开发信"):
@@ -241,8 +269,8 @@ def render_customer_form(is_edit=False):
         st.title("➕ 新建客户档案")
 
     if st.button("← 返回上一页"):
-        st.session_state['current_page'] = "客户列表"
         st.session_state.pop('show_add_form', None)
+        st.session_state['edit_customer'] = None
         st.rerun()
     st.markdown("---")
 
@@ -258,7 +286,14 @@ def render_customer_form(is_edit=False):
             linkedin = st.text_input("LinkedIn链接", value=customer.get('linkedin', '') if customer else "")
             website = st.text_input("官网地址", value=customer.get('website', '') if customer else "")
         with col2:
-            customer_grade = st.selectbox("客户等级", ["A", "B", "C"], index=["A","B","C"].index(customer['customer_grade']) if customer else 2)
+            default_grades = ["A", "B", "C"]
+            current_grade = customer.get('customer_grade', 'C') if customer else 'C'
+            if current_grade not in default_grades:
+                grade_options = default_grades + [current_grade]
+            else:
+                grade_options = default_grades
+            customer_grade = st.selectbox("客户等级", grade_options,
+                index=grade_options.index(current_grade) if current_grade in grade_options else 2)
             status = st.selectbox("跟进状态", ["正在跟进", "备选", "拒绝"], index=["正在跟进","备选","拒绝"].index(customer['status']) if customer else 1)
             industry = st.text_input("所属行业", value=customer.get('industry', '') if customer else "")
             products = st.text_input("主营产品", value=customer.get('products', '') if customer else "")
@@ -315,6 +350,6 @@ def render_customer_form(is_edit=False):
                     st.success("新建成功")
                 else:
                     st.error(f"失败：{err}")
-            st.session_state['current_page'] = "客户列表"
             st.session_state.pop('show_add_form', None)
+            st.session_state['edit_customer'] = None
             st.rerun()

@@ -9,7 +9,7 @@ def render_ai_email():
 
     st.title("🤖 AI开发邮件生成")
     if st.button("← 返回客户详情"):
-        st.session_state['current_page'] = "客户详情"
+        st.session_state['current_page'] = "客户管理"
         st.rerun()
     st.markdown("---")
 
@@ -40,15 +40,16 @@ def render_ai_email():
             tpl = tpl_df[tpl_df['id'] == tid].iloc[0]
             st.session_state['generated_email'] = {'subject': tpl['subject'], 'content': tpl['content']}
 
-    # 邮件场景（完全按你的SOP分类）
+    # 邮件场景（完全按SOP分类）
     mail_type = st.selectbox("邮件场景", [
         "初次开发邮件（成本导向）",
         "初次开发邮件（技术导向）",
         "初次开发邮件（贸易商/分销商）",
-        "跟进回复邮件",
-        "样品推荐邮件",
-        "节日问候邮件",
-        "新品推广邮件"
+        "跟进邮件（轻提醒+退路）",
+        "跟进邮件（最后确认+留后路）",
+        "拒绝回复（已有稳定供应商）",
+        "拒绝回复（不采购原材料）",
+        "季度轻触达（新产品/结构）",
     ])
 
     # 客户背调钩子（SOP要求：每封邮件必须有1个观察点）
@@ -125,15 +126,94 @@ WhatsApp: [你的号码]
 Email: [你的邮箱]
 """
 
+            elif mail_type == "跟进邮件（轻提醒+退路）":
+                subject = f"Re: {product_focus.split('（')[0]} for protective textiles"
+                content = f"""Hi {name},
+
+Just a quick note following up on my earlier message about aramid/HPPE materials for protective textiles.
+
+No rush—may have missed in the inbox.
+
+If it's not a priority now, totally fine.
+
+Best regards,
+[Your Name]
+KEYSTONE | Jiangsu Kexu Textile Technology Co., Ltd.
+WhatsApp: [你的号码]
+Email: [你的邮箱]
+"""
+
+            elif mail_type == "跟进邮件（最后确认+留后路）":
+                subject = f"Re: {product_focus.split('（')[0]} materials"
+                content = f"""Hi {name},
+
+I'll keep this short—last check-in on aramid/HPPE materials for protective applications.
+
+If this isn't relevant right now, no problem—I'll reconnect in a few months if anything changes.
+
+Best regards,
+[Your Name]
+KEYSTONE | Jiangsu Kexu Textile Technology Co., Ltd.
+WhatsApp: [你的号码]
+Email: [你的邮箱]
+"""
+
+            elif mail_type == "拒绝回复（已有稳定供应商）":
+                subject = f"Re: {product_focus.split('（')[0]} | backup option"
+                content = f"""Hi {name},
+
+Totally understand—stability comes first.
+
+We're happy to stay as a backup option if you ever need an alternative for aramid/HPPE.
+
+I'll share occasional updates; feel free to reach out anytime.
+
+Best regards,
+[Your Name]
+KEYSTONE | Jiangsu Kexu Textile Technology Co., Ltd.
+WhatsApp: [你的号码]
+Email: [你的邮箱]
+"""
+
+            elif mail_type == "拒绝回复（不采购原材料）":
+                subject = f"Re: {product_focus.split('（')[0]} | thanks"
+                content = f"""Hi {name},
+
+Thanks for clarifying.
+
+If you ever meet fabric producers who need aramid/HPPE yarns, I'd appreciate an intro.
+
+Best regards,
+[Your Name]
+KEYSTONE | Jiangsu Kexu Textile Technology Co., Ltd.
+WhatsApp: [你的号码]
+Email: [你的邮箱]
+"""
+
+            elif mail_type == "季度轻触达（新产品/结构）":
+                subject = f"New {product_focus.split('（')[0]} structure for protective textiles"
+                content = f"""Hi {name},
+
+Quick note—we've recently developed a lightweight {product_focus} structure for protective textiles.
+
+If you're reviewing materials this quarter, happy to share details.
+
+Best regards,
+[Your Name]
+KEYSTONE | Jiangsu Kexu Textile Technology Co., Ltd.
+WhatsApp: [你的号码]
+Email: [你的邮箱]
+"""
+
             else:
-                subject = f"Following up on {product_focus.split('（')[0]} | {company}"
+                subject = f"Re: {product_focus.split('（')[0]} | {company}"
                 content = f"""Hi {name},
 
 {customer_hook}
 
-We are KEYSTONE, a professional manufacturer of high-performance protective textiles from China. We specialize in {product_focus} for industrial PPE applications.
+Quick question — are you currently reviewing your {product_focus} supply base?
 
-Please let me know if you need any further information.
+No rush, just wanted to check if there's a fit.
 
 Best regards,
 [Your Name]
