@@ -1,7 +1,6 @@
 import streamlit as st
 import sqlite3
 import pandas as pd
-import numpy as np
 from datetime import datetime, timedelta
 import io
 
@@ -15,7 +14,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 样式
+# =============================================================================
+# 样式（全部在这里，没有外部文件）
+# =============================================================================
 st.markdown("""
 <style>
     .stApp { background-color: #f8fafc; }
@@ -24,17 +25,17 @@ st.markdown("""
     [data-testid="stSidebar"] { background-color: #e0f2fe; }
     .stButton > button { background-color: #3b82f6; color: white !important; border-radius: 8px; }
     .stButton > button:hover { background-color: #2563eb; }
-    .stat-card { background: white; padding: 1.5rem; border-radius: 12px; border-left: 4px solid #3b82f6; }
+    .stat-card { background: white; padding: 1.5rem; border-radius: 12px; border-left: 4px solid #3b82f6; margin-bottom: 1rem; }
     .customer-card { background: white; padding: 1rem; border-radius: 10px; border: 1px solid #e2e8f0; margin-bottom: 0.75rem; }
     .grade-a { background: #dcfce7; color: #166534 !important; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
     .grade-b { background: #dbeafe; color: #1e40af !important; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
     .grade-c { background: #fef3c7; color: #92400e !important; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
-    .duplicate-warning { background: #fee2e2; border-left: 4px solid #ef4444; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
+    .duplicate-warning { background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border-left: 4px solid #ef4444; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
 </style>
 """, unsafe_allow_html=True)
 
 # =============================================================================
-# 数据库类（完全没问题，没有报错）
+# 数据库类（全部在这里，没有外部文件）
 # =============================================================================
 class Database:
     def __init__(self, db_path="ppe_customers.db"):
@@ -172,12 +173,13 @@ class Database:
 db = Database()
 
 # =============================================================================
-# 页面函数（完全没问题，没有报错）
+# 页面函数（全部在这里，没有外部文件）
 # =============================================================================
 def render_home_page():
     st.title("📊 PPE客户开发工作区")
     st.markdown("---")
     df, _ = db.get_all_customers()
+    
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.markdown(f'<div class="stat-card"><h3>总客户数</h3><div class="value">{len(df)}</div></div>', unsafe_allow_html=True)
@@ -186,7 +188,8 @@ def render_home_page():
     with col3:
         st.markdown(f'<div class="stat-card"><h3>正在跟进</h3><div class="value">{len(df[df["status"]=="正在跟进"])}</div></div>', unsafe_allow_html=True)
     with col4:
-        st.markdown(f'<div class="stat-card"><h3>转化率</h3><div class="value">{round(len(df[df["customer_grade"]=="A"])/len(df)*100,1) if len(df)>0 else 0}%</div></div>', unsafe_allow_html=True)
+        rate = round(len(df[df["customer_grade"]=="A"])/len(df)*100,1) if len(df)>0 else 0
+        st.markdown(f'<div class="stat-card"><h3>转化率</h3><div class="value">{rate}%</div></div>', unsafe_allow_html=True)
 
 def render_customer_list():
     st.title("👥 客户管理")
@@ -195,10 +198,6 @@ def render_customer_list():
     if st.button("➕ 添加新客户", type="primary"):
         st.session_state['show_add'] = True
         st.rerun()
-    
-    if st.session_state.get('show_add'):
-        render_customer_form()
-        return
     
     df, _ = db.get_all_customers()
     for _, row in df.iterrows():
@@ -213,7 +212,7 @@ def render_customer_list():
         </div>
         """, unsafe_allow_html=True)
         
-        col1, col2, col3 = st.columns(3)
+        col1, col2 = st.columns(2)
         with col1:
             if st.button("编辑", key=f"edit_{row['id']}"):
                 st.session_state['edit_id'] = row['id']
@@ -242,7 +241,6 @@ def render_customer_form(is_edit=False):
         contact_person = st.text_input("联系人", value=c['contact_person'] if c else "")
         email = st.text_input("邮箱", value=c['email'] if c else "")
         
-        # 自动查重提示
         if not is_edit and (company_name or email):
             dup = db.check_duplicate_client(company_name, email)
             if dup:
@@ -329,6 +327,8 @@ def main():
     elif page == "客户管理":
         if st.session_state.get('show_edit'):
             render_customer_form(is_edit=True)
+        elif st.session_state.get('show_add'):
+            render_customer_form(is_edit=False)
         else:
             render_customer_list()
     elif page == "公司客户名录":
