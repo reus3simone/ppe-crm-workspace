@@ -1,159 +1,129 @@
-
 import streamlit as st
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 from database.db import Database
 
-# 全局数据库实例
 db = Database()
 
-def get_statistics():
-    """全空值安全统计，无数据不崩溃"""
-    df, _ = db.get_all_customers()
-    if df.empty:
-        return {
-            'total': 0, 'grade_a': 0, 'grade_b': 0, 'grade_c': 0,
-            'status_active': 0, 'status_pending': 0, 'status_rejected': 0,
-            'countries': {}, 'conversion_rate': 0
-        }
-
-    stats = {
-        'total': len(df),
-        'grade_a': len(df[df['customer_grade'] == 'A']),
-        'grade_b': len(df[df['customer_grade'] == 'B']),
-        'grade_c': len(df[df['customer_grade'] == 'C']),
-        'status_active': len(df[df['status'] == '正在跟进']),
-        'status_pending': len(df[df['status'] == '备选']),
-        'status_rejected': len(df[df['status'] == '拒绝']),
-        'countries': df['country'].value_counts().to_dict(),
-        'conversion_rate': round(len(df[df['customer_grade'] == 'A']) / len(df) * 100, 1)
-    }
-    return stats
-
 def get_follow_up_reminders():
-    """跟进提醒筛选，兼容空日期、过期数据"""
-    df, _ = db.get_all_customers()
-    today = datetime.now().date()
-    week_end = today + timedelta(days=7)
-    df_clean = df.copy()
+    """修复：日期比较报错问题"""
+    df, err = db.get_all_customers()
+    if err or df.empty:
+        return []
+    try:
+        today = datetime.now().strftime('%Y-%m-%d')
+        # 修复：统一转日期格式，过滤空值，避免类型报错
+        df['follow_up_date'] = pd.to_datetime(df['follow_up_date'], errors='coerce').dt.strftime('%Y-%m-%d')
+        df_clean = df[df['follow_up_date'].notna()]
+        reminders = df_clean[df_clean['follow_up_date'] <= today].to_dict('records')
+        return reminders
+    except Exception:
+        return []
 
-    # 日期格式标准化，空值过滤
-    df_clean['follow_up_date'] = pd.to_datetime(df_clean['follow_up_date'], errors='coerce').dt.date
-
-    today_follow = df_clean[
-        (df_clean['follow_up_date'] == today) &
-        (df_clean['status'] != '拒绝')
-    ].sort_values('follow_up_date')
-
-    week_follow = df_clean[
-        (df_clean['follow_up_date'] > today) &
-        (df_clean['follow_up_date'] <= week_end) &
-        (df_clean['status'] != '拒绝')
-    ].sort_values('follow_up_date')
-
-    overdue = df_clean[
-        (df_clean['follow_up_date'] < today) &
-        (df_clean['status'] != '拒绝') &
-        (df_clean['follow_up_date'].notna())
-    ].sort_values('follow_up_date')
-
-    return {'today': today_follow, 'week': week_follow, 'overdue': overdue}
-
-def render_stat_card(title, value, color="#3b82f6"):
-    """统计卡片渲染"""
-    st.markdown(f"""
-    <div class="stat-card" style="border-left-color: {color};">
-        <h3>{title}</h3>
-        <div class="value">{value}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-def render_reminder_customer(row, is_overdue=False):
-    """跟进提醒卡片，空联系人兼容显示"""
-    css_class = "reminder-card urgent" if is_overdue else "reminder-card"
-    contact_name = row['contact_person'] if pd.notna(row['contact_person']) else "暂无联系人"
-    contact_email = row['email'] if pd.notna(row['email']) else "暂无邮箱"
-
-    st.markdown(f"""
-    <div class="{css_class}">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <strong>{row['company_name']}</strong>
-                <span class="grade-{row['customer_grade'].lower()}" style="margin-left: 0.5rem;">{row['customer_grade']}级</span>
-            </div>
-            <small>跟进日期: {row['follow_up_date']}</small>
-        </div>
-        <div style="margin-top: 0.5rem; font-size: 0.875rem; color: #64748b;">
-            {contact_name} | {contact_email}
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+def import_customers_from_excel(uploaded_file):
+    """修复：Excel表格导入功能"""
+    try:
+        df = pd.read_excel(uploaded_file)
+        # 自动匹配字段名，兼容各种表头
+        column_map = {
+            '公司名': 'company_name', '公司名称': 'company_name', 'company': 'company_name',
+            '联系人': 'contact_person', '姓名': 'contact_person', 'name': 'contact_person',
+            '邮箱': 'email', 'email': 'email', '邮件': 'email',
+            '电话': 'phone', 'phone': 'phone', '手机号': 'phone',
+            '国家': 'country', 'country': 'country',
+            '官网': 'website', 'website': 'website',
+            'LinkedIn': 'linkedin', '领英': 'linkedin',
+            '行业': 'industry', 'products': 'products', '产品': 'products'
+        }
+        df = df.rename(columns={k: v for k, v in column_map.items() if k in df.columns})
+        
+        success_count = 0
+        fail_count = 0
+        for _, row in df.iterrows():
+            row_dict = dict(row)
+            if 'company_name' not in row_dict or not str(row_dict['company_name']).strip():
+                fail_count += 1
+                continue
+            # 自动去重
+            conflict_level, _ = db.check_customer_conflict(row_dict)
+            if conflict_level == 3:
+                fail_count += 1
+                continue
+            cid, _ = db.add_customer(row_dict)
+            if cid:
+                success_count += 1
+            else:
+                fail_count += 1
+        return success_count, fail_count
+    except Exception as e:
+        return 0, 0
 
 def render_home_page():
     st.title("📊 PPE客户开发工作区")
     st.markdown("---")
-    st.header("📈 数据概览")
-    stats = get_statistics()
 
-    # 第一行统计卡片
+    # 表格导入功能
+    with st.expander("📥 批量导入客户Excel", expanded=False):
+        uploaded_file = st.file_uploader("上传Excel表格", type=["xlsx", "xls"])
+        if uploaded_file:
+            if st.button("开始导入", type="primary"):
+                success, fail = import_customers_from_excel(uploaded_file)
+                st.success(f"导入完成！成功：{success}条，重复/失败：{fail}条")
+                st.rerun()
+
+    df, err = db.get_all_customers()
+    if err:
+        st.error("数据加载失败")
+        return
+
+    total = len(df)
+    a_grade = len(df[df['customer_grade'] == 'A'])
+    b_grade = len(df[df['customer_grade'] == 'B'])
+    pending = len(df[df['development_status'] == '初次开发'])
+    quoted = len(df[df['development_status'] == '已报价'])
+    sample = len(df[df['development_status'] == '样品阶段'])
+
     col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        render_stat_card("总客户数", stats['total'], "#3b82f6")
-    with col2:
-        render_stat_card("A级客户", stats['grade_a'], "#10b981")
-    with col3:
-        render_stat_card("正在跟进", stats['status_active'], "#f59e0b")
-    with col4:
-        render_stat_card("转化率", f"{stats['conversion_rate']}%", "#8b5cf6")
+    col1.metric("总客户数", total)
+    col2.metric("A级客户", a_grade)
+    col3.metric("B级客户", b_grade)
+    col4.metric("待开发", pending)
 
-    # 第二行统计卡片
+    st.markdown("---")
     col1, col2, col3 = st.columns(3)
-    with col1:
-        render_stat_card("B级客户", stats['grade_b'], "#3b82f6")
-    with col2:
-        render_stat_card("C级客户", stats['grade_c'], "#f59e0b")
-    with col3:
-        render_stat_card("已拒绝", stats['status_rejected'], "#ef4444")
-
-    st.markdown("---")
-    st.subheader("🎯 A级客户质量占比")
-    if stats['total'] > 0:
-        st.progress(stats['grade_a'] / stats['total'])
-        st.caption(f"A级客户 {stats['grade_a']} 家 / 总客户 {stats['total']} 家")
-    else:
-        st.info("暂无客户数据，无法计算质量占比")
-
-    st.markdown("---")
+    col1.metric("已报价", quoted)
+    col2.metric("样品阶段", sample)
     reminders = get_follow_up_reminders()
-    col1, col2 = st.columns(2)
+    col3.metric("今日待跟进", len(reminders))
 
-    with col1:
-        st.subheader("🔔 今日需跟进")
-        if not reminders['overdue'].empty:
-            st.markdown("**⚠️ 已过期跟进任务**")
-            for _, row in reminders['overdue'].iterrows():
-                render_reminder_customer(row, is_overdue=True)
-        if reminders['today'].empty:
-            st.info("今日暂无待跟进客户")
-        else:
-            for _, row in reminders['today'].iterrows():
-                render_reminder_customer(row)
-
-    with col2:
-        st.subheader("📅 本周待跟进")
-        if reminders['week'].empty:
-            st.info("本周暂无待跟进客户")
-        else:
-            for _, row in reminders['week'].iterrows():
-                render_reminder_customer(row)
+    # 待跟进提醒
+    if reminders:
+        st.markdown("---")
+        st.warning("⚠️ 今日待跟进客户")
+        for c in reminders:
+            st.write(f"• {c['company_name']} | 上次跟进：{c.get('follow_up_date', '')}")
 
     st.markdown("---")
-    st.subheader("🌍 客户国家分布")
-    if stats['countries']:
-        country_df = pd.DataFrame({
-            '国家': list(stats['countries'].keys()),
-            '客户数量': list(stats['countries'].values())
-        })
-        st.bar_chart(country_df.set_index('国家'), height=300, use_container_width=True)
+    st.subheader("📈 最近新增客户")
+    if not df.empty:
+        st.dataframe(
+            df[['company_name', 'country', 'customer_grade', 'development_status', 'assigned_to', 'created_at']].head(10),
+            use_container_width=True,
+            hide_index=True
+        )
     else:
-        st.info("暂无国家分布数据")
+        st.info("暂无客户数据，快去添加第一个客户吧！")
+
+    st.markdown("---")
+    st.subheader("📌 快速操作")
+    col1, col2, col3 = st.columns(3)
+    if col1.button("➕ 新增客户", use_container_width=True):
+        st.session_state['show_add_form'] = True
+        st.session_state['current_page'] = "客户管理"
+        st.rerun()
+    if col2.button("🤖 生成开发邮件", use_container_width=True):
+        st.session_state['current_page'] = "AI邮件生成"
+        st.rerun()
+    if col3.button("🔍 客户背景研究", use_container_width=True):
+        st.session_state['current_page'] = "客户背景研究"
+        st.rerun()
