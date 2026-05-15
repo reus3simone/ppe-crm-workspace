@@ -810,6 +810,20 @@ C级客户标准：
             except Exception:
                 pass
         if email_count == 0:
+            # 兜底：开发进度已标注发过信 → 按首次跟进节奏算
+            dev_status = str(customer.get('development_status', '')).strip()
+            if dev_status in ('已发开发信', '已报价', '样品阶段', '已成交'):
+                lfd = customer.get('last_follow_up_date')
+                if lfd:
+                    try:
+                        last_contact = pd.to_datetime(lfd).date()
+                    except Exception:
+                        pass
+                d = self._add_working_days(last_contact, 7)
+                return d, f"客户标注为「{dev_status}」，按首次跟进（第1轮），7个工作日后"
+            # 真的没发过
+            d = self._add_working_days(today, 1)
+            return d, "尚未发送开发信，建议尽快发送"
             d = self._add_working_days(today, 1)
             return d, "尚未发送开发信，建议尽快发送"
         elif email_count == 1:
