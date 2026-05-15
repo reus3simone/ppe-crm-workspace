@@ -400,15 +400,12 @@ C级客户标准：
 
             # ===== 修 bug：如果导入的开发进度已表明发过信，自动补 timeline =====
             dev_status = str(clean_data.get('development_status', '')).strip()
-            if dev_status in ('已发开发信', '已报价', '样品阶段', '已成交'):
-                cursor.execute("""
-                    INSERT INTO follow_up_timeline (customer_id, event_type, event_content)
-                    VALUES (?, ?, ?)
-                """, (customer_id, "生成邮件",
-                      f"导入标记：客户在表格中已标注为「{dev_status}」，跳过首轮开发"))
-                cursor.execute("""
-                    UPDATE customers SET last_follow_up_date = ? WHERE id = ?
-                """, (datetime.now().strftime('%Y-%m-%d'), customer_id))
+            is_sent = (
+                dev_status in ('已报价', '样品阶段', '已成交')
+                or '已发' in dev_status and '开发信' in dev_status
+                or '已发' in dev_status and '邮件' in dev_status
+            )
+            if is_sent:
 
             cursor.execute("""
                 INSERT INTO follow_up_timeline (customer_id, event_type, event_content)
@@ -812,7 +809,12 @@ C级客户标准：
         if email_count == 0:
             # 兜底：开发进度已标注发过信 → 按首次跟进节奏算
             dev_status = str(customer.get('development_status', '')).strip()
-            if dev_status in ('已发开发信', '已报价', '样品阶段', '已成交'):
+            is_sent = (
+                dev_status in ('已报价', '样品阶段', '已成交')
+                or '已发' in dev_status and '开发信' in dev_status
+                or '已发' in dev_status and '邮件' in dev_status
+            )
+            if is_sent:
                 lfd = customer.get('last_follow_up_date')
                 if lfd:
                     try:
