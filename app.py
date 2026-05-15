@@ -75,7 +75,7 @@ with st.sidebar:
     nav_items = [
         ("🏠", "首页"),
         ("👥", "客户管理"),
-        ("🤖", "AI邮件生成"),
+        ("📧", "跟进邮件工坊"),
         ("🔍", "客户背景研究"),
     ]
 
@@ -113,7 +113,7 @@ elif page == "客户管理":
     else:
         render_customer_list()
 
-elif page == "AI邮件生成":
+elif page == "跟进邮件工坊":
     render_ai_email()
 
 elif page == "客户背景研究":

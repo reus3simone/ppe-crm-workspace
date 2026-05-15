@@ -37,11 +37,43 @@ def render_research():
             st.markdown(f"**官网：** <a href='{customer['website']}' target='_blank'>🔗 打开官网</a>", unsafe_allow_html=True)
         else:
             st.write("**官网：** 未填写")
-            
+
         if customer.get('linkedin') and customer['linkedin'].strip():
             st.markdown(f"**LinkedIn：** <a href='{customer['linkedin']}' target='_blank'>🔗 打开LinkedIn</a>", unsafe_allow_html=True)
         else:
             st.write("**LinkedIn：** 未填写")
+
+    st.markdown("---")
+
+    # ===== 产品匹配建议 =====
+    st.subheader("🔗 产品匹配建议")
+    matches = db.get_product_match(
+        customer.get('industry', ''),
+        customer.get('products', ''),
+        customer.get('notes', '')
+    )
+    if matches:
+        for m in matches:
+            icon = "⭐" if m['priority'] == '⭐ 优先' else "📌"
+            st.markdown(f"{icon} **{m['product']}** — {m['priority']}")
+    else:
+        st.info("暂未匹配到产品线，请填写更多客户信息")
+    # 手动补充匹配
+    manual_product = st.text_input("手动指定匹配产品（选填）",
+        placeholder="例如：阻燃面料、防切割纱线等",
+        key="research_manual_product")
+
+    # ===== 建议发送时间 =====
+    st.subheader("🕐 建议发送时间")
+    tz_info = db.get_timezone_advice(customer.get('country', ''))
+    if tz_info:
+        st.markdown(f"""
+        - **客户时区：** {tz_info['tz']}
+        - **最佳发送：** 客户当地 09:30 = 北京时间 **{tz_info['cst_send']}**
+        - **推荐日期：** 周二至周四
+        """)
+    else:
+        st.info("未识别客户时区，请填写国家信息")
 
     st.markdown("---")
     st.subheader("📝 调研笔记")
@@ -51,6 +83,17 @@ def render_research():
     if st.button("💾 保存调研笔记", type="primary"):
         success, error = db.update_customer(cid, {'notes': research_notes})
         if success:
+            # 自动记录到跟进时间轴
+            match_text = ""
+            if matches:
+                match_text = "匹配产品：" + "、".join([m['product'] for m in matches])
+            if manual_product:
+                match_text += f"（手动补充：{manual_product}）"
+            time_text = ""
+            if tz_info:
+                time_text = f"建议发送时段：北京{tz_info['cst_send']}"
+            timeline_parts = [p for p in ["背调完成", match_text, time_text] if p]
+            db.add_timeline_event(cid, "背调完成", " | ".join(timeline_parts))
             st.success("调研笔记已保存")
         else:
             st.error(f"保存失败：{error}")

@@ -1,0 +1,559 @@
+================================================================================
+常州科旭纺织（KEYSTONE）｜客户开发资料与 SOP（精进完整版）
+适用：芳纶/FR/防电弧/高温防护/防切割/PPE 纺织赛道｜建议每季度小更新
+================================================================================
+文档说明（重要）
+- 目录册用于校准 SOP 里的定位、关键词、标准池与触达话术，不等于要求你在第一封邮件里复述目录。
+--------------------------------------------------------------------------------
+【零】对外统一口径速查（请先对齐团队再对外）
+--------------------------------------------------------------------------------
+法律主体（中文）：江苏科旭纺织科技有限公司
+法律主体（英文）：Jiangsu Kexu Textile Technology Co., Ltd.
+国际品牌名：KEYSTONE（官网：keystonetex.com）
+常用地理表述：中国江苏省常州市武进区定安西路188号，213161
+产研定位（官网页脚）：科旭纺织·以功能性纺织品为核心业务的产研型企业
+说明：
+- 口语「常州科旭纺织」可用；合同、签名、背调建议用完整工商名称 + KEYSTONE。
+- 官网联系信息可能与业务同事签名不一致时，以公司统一对外邮箱/电话为准，避免客户核对官网产生困惑。
+本 SOP 默认业务边界（可与团队自行约定）
+- 对外开发以「纱线 + 面料」等防护材料为主推进时：话术与背调优先对齐客户的纱线/面料/工装项目，避免收件人误以为你负责其成品线全包。
+- 公司或集团层面若另有手套、服装等成品能力：仅在客户问到或内部协同需要时补充，避免职责边界与客户预期错位。
+--------------------------------------------------------------------------------
+【一】公开信息调研摘要（便于内部核对，对外勿逐条堆砌）
+--------------------------------------------------------------------------------
+可核实要点（来源：kexutex.com、keystonetex.com，具体以最新官网为准）：
+- 成立于 2000 年；KEYSTONE 站表述：专注短纤类产品约 25 年。
+- 厂区约 60,000 平方米；高新技术企业；省级专精特新企业。
+- 国内外研发专利约 50+ 项（官网表述）。
+- 能力链条（公司公开表述）：纱线生产 → 手套与袖套编织 → 面料工程/织造 → 防护服生产（具体是否纳入你个人业绩范围，以内部分工为准；本 SOP 主推材料端时，可强调 yarn & fabric engineering）。
+- 产品方向：阻燃纱线与面料、防切割纱线与织物、工业用纺织品、功能性服装纱线、个人防护用品等。
+- 官网产品信息提及 2023/2024「中国十大类纺织创新产品」相关防割服系列（第二封或一页纸再引用，首封冷邮件勿堆）。
+内部确认后再对外「写死」：
+- 具体大客户案例、品牌背书（无授权不点名）。
+- 测试报告编号、实验室、标准适用范围与有效期。
+- 主对外邮箱、主签名电话（与官网统一）。
+--------------------------------------------------------------------------------
+【二】公司定位（中文｜固定对外口径）
+--------------------------------------------------------------------------------
+短版（一句话）
+江苏科旭纺织科技有限公司（国际品牌 KEYSTONE）成立于 2000 年，总部位于江苏常州武进，二十余年专注短纤体系，定位为高性能工业防护材料供应商：以阻燃、耐高温、防切割与芳纶等功能复合见长，面向 PPE / 工业安全 / 特种工装等材料需求。
+长版（关于我们/合作前介绍用，控制长度）
+公司聚焦阻燃、防割、耐高温/隔热等多危害（multi-hazard）工业防护方向，核心交付为功能性纱线与防护面料，强调「功能材料整合」——同一材料体系上叠加防割、阻燃、耐热、抗静电等可验证组合，而不是单点卖布。依托约 60,000 平方米制造基地与高新技术企业、省级专精特新等资质基础，公司在材料开发与工艺工程上持续投入，累计国内外专利约 50+ 项。我们强调可验证的性能一致性、可复制的工艺窗口与可持续的供应节奏，服务重视合规与长周期合作的防护纺织客户。
+英文定位（长期固定｜一句话）
+We engineer staple-fiber protective textile materials—primarily FR / heat & arc protection and cut resistance—using meta/para-aramid, HPPE and composite yarn systems, with a clear focus on industrial PPE and safety workwear applications.
+--------------------------------------------------------------------------------
+【二·附】目录册参考｜产品线分档与标准池（对内｜触达时分阶段使用）
+--------------------------------------------------------------------------------
+一句话（对内背）
+科旭 / KEYSTONE = 高性能防护材料供应商；核心方向：防切割、阻燃、耐高温、芳纶与工业防护复合材料。
+目标行业关键词（背调/检索用）
+PPE（个人防护）、工业安全、特种工装、消防、电弧防护、高温作业；以及焊接/金属加工等衍生场景（以材料进入的终端表述，勿首封堆场景）。
+四大材料主线（与目录册结构对齐；对外每次只选一条切入）
+1）防割面料（Cut-resistant fabrics）
+   关键词：高切割等级区间（册子常见 ANSI A2–A8 等表述）、芳纶 1313/1414、HPPE、耐磨、耐高温辅助性能；复合功能如阻燃+防割、防割+耐热、防割+抗静电。
+   对内合规提醒：切割等级与测试方法强相关，对外话术须与技术部报告一致，避免「标准名写对、方法名写错」。
+2）防割纱线（Cut-resistant yarns）
+   材料池：HPPE、芳纶 1414、钢丝、玻纤、玄武岩、导电纤维等；卖点是功能型复合纱（engineered / composite yarn），不是普通 commodity yarn。
+3）阻燃面料（FR / industrial protective fabrics）
+   标准池（第二封或技术阶段再精准投放，首封不罗列）：
+   - NFPA 2112（美系阻燃工装体系）
+   - EN ISO 11611（焊接）、EN ISO 11612（阻燃服）
+   - IEC 61482（电弧）、ASTM F1959（Arc rating / ATPV，按终端与报告实际引用）
+4）阻燃 / 耐高温纱线
+   1313 偏阻燃隔热、1414 偏高强耐热；混纺钢丝/导电/玄武岩/预氧丝（PANOX）等，对应客户要的「多功能材料」趋势。
+最大竞争叙事（开发信心智，禁止首封全文背诵）
+- 真正优势是「功能材料整合能力」：multi-hazard、可复合、可验证。
+- 从纱线到面料的材料连贯：减少客户多供应商拼接成本（用一句话点出即可）。
+- PPE / industrial safety 场景清晰，叙事不飘到泛纺织。
+- 标准与测试语言齐全：是「能力池」，用于评估阶段与文件链，不是冷邮件标题堆词。
+英文钩子（替代 “we sell fabric”）
+- engineered protective yarns & fabrics
+- high-performance protective textile materials
+- multi-hazard FR / cut / heat material systems
+说明：solutions 一词可用，但对部分欧洲技术收件人偏空，优先 materials / systems / engineered structures。
+适配客户类型（与 SOP 分级共用）
+PPE 品牌与制造商、FR/电弧/焊接工装供应链、技术型防护面料厂、工业安全渠道商；美系客户对 NFPA/ASTM 敏感，欧系对 EN ISO/IEC 敏感——背调时先识别对方市场，再决定首封点哪一个标准关键词。
+--------------------------------------------------------------------------------
+【三】英文公司介绍（邮件 / LinkedIn）
+--------------------------------------------------------------------------------
+版本 A｜极简（第一封邮件后签名档旁白、或 LinkedIn 摘要）
+KEYSTONE is the international brand of Jiangsu Kexu Textile Technology Co., Ltd. (est. 2000, Changzhou, China). We engineer staple-fiber protective yarns and fabrics for industrial PPE—cut resistance, FR / heat protection, and arc-related protective textiles—with in-house yarn spinning and fabric engineering capabilities.
+版本 B｜标准（客户问「Who are you?」或进入实质沟通后）
+KEYSTONE / Jiangsu Kexu Textile Technology Co., Ltd. has focused on high-performance staple fiber textiles for over two decades. Our core offer is engineered protective yarns and multi-hazard protective fabrics for industrial safety and PPE supply chains (FR, arc flash, welding-related protection, and cut-resistant textile platforms), supported by controlled processes from yarn design through fabric development. Operating from a ~60,000 m² manufacturing base, we invest in application-driven development (including a broad patent portfolio). We support customers who need batch-to-batch consistency, industrial-laundering durability, and documented compliance pathways—commonly referencing EN ISO 11612, IEC 61482, EN 388, NFPA 2112, EN ISO 11611, ASTM F1959 and related requirements depending on the end-use and target market.
+--------------------------------------------------------------------------------
+【四】核心优势（精进版｜按欧洲 PPE 客户价值排序｜内部参考）
+--------------------------------------------------------------------------------
+0）功能材料整合（multi-hazard｜总括）
+同一材料体系上实现防割、阻燃、耐高温、抗静电等可验证组合，服务高端 PPE 与工业安全客户；对外用「engineered / composite」叙事，首封只选与客户最相关的一个功能组合点。
+1）芳纶与阻燃/高温防护体系（主体）
+自 2009 年起深耕间位芳纶 1313、对位芳纶 1414 纺纱与后整理，长期专注高性能短纤防护材料。提供纯纺及混纺芳纶纱线与面料，用于阻燃工装、消防服、电弧防护、高温工业隔热等。
+对外表述重点：批次一致性、工业洗涤后性能保持、可重复工艺窗口、稳定批量交付；成本优势放在「替代料/备份供应链」场景再展开，首封弱化「低价」。
+2）深度理解 PPE 终端应用（技术同行感）
+熟悉欧洲 PPE 终端产品的生产逻辑：阻燃工装、消防服、电弧防护、防割手套、耐磨工业防护；理解工业洗涤耐久、舒适与防护平衡、针织效率、多层结构等实际问题。
+3）HPPE 短纤体系（防割差异化补充）
+成熟 HPPE 短纤纱线开发与量产，侧重改善传统防割材料偏硬、针织适配性差等问题；在满足 EN 388 等要求前提下，提升柔软度、灵活性、针织效率与轻量化。
+4）预氧化丝（PANOX）产品线（阻燃/高温补充）
+预氧化丝纯纺及芳纶混纺阻燃纱线与面料：本质阻燃、热稳定性与隔热表现；适用于消防、高温工业防护、避火服及多层热防护系统等。
+5）全流程自主可控（稳定性叙事）
+从纺纱、织造到后整理的内部生产体系，强调可控性、可追溯与长周期供应能力；对欧洲客户用「in-house process control」替代空洞「规模最大」。
+6）国际标准合规（欧美 PPE / 工业防护方向）
+可按项目需求配合测试与文件支持（常见池：EN 388、EN ISO 11612、IEC 61482、EN 469；美系场景补充 NFPA 2112、EN ISO 11611、ASTM F1959 等——具体以报告与终端用途为准）。第一封不堆认证，第二封或客户问起再轻描淡写带过。
+7）柔性生产支持
+小批量验证、新产品开发、快速打样、多规格测试，适配「先测试、后放量」。
+8）长期国际项目经验
+熟悉欧洲及亚洲 PPE 市场对稳定性、合规性、可重复性与技术沟通效率的要求。
+注意：无公开授权不写具体品牌「供货」；可写「similar materials for protective textile manufacturers in Europe」类隐晦表述。
+9）可证实的公司级事实（第二封/一页纸/背调回复用，首封勿堆）
+2000 年成立；~60,000 m² 基地；高新技术与省级专精特新；专利约 50+ 项；纱线—针织—面料—服装一体化能力。
+--------------------------------------------------------------------------------
+【五】核心产品英文介绍（邮件回复专用｜按业务优先级）
+--------------------------------------------------------------------------------
+Our core product range includes:
+Flame-resistant & heat-protection systems (main focus)
+- Meta-aramid 1313 yarns
+- Para-aramid 1414 yarns
+- Aramid blended yarns
+- FR sewing threads
+- Pre-oxidized PAN (PANOX) yarns
+- Heat-insulation textile systems
+Cut-resistant & abrasion-resistant systems
+- HPPE staple fiber yarns
+- Aramid core-spun yarns
+- Steel/glass/basalt composite yarns
+- Lightweight cut-resistant yarn systems
+- Abrasion-resistant protective textile yarns
+Protective fabrics
+- FR protective fabrics
+- Arc-rated fabrics
+- Cut-resistant fabrics
+- Aramid/PANOX blended fabrics
+- Industrial protective knitted fabrics
+--------------------------------------------------------------------------------
+【六】技术话题库（欧洲 PPE 客户高频）
+--------------------------------------------------------------------------------
+阻燃/高温方向
+- Industrial laundering durability after repeated washing
+- Arc-rating consistency across production batches
+- Comfort vs protection balance for FR workwear
+- Meta-aramid blend optimization
+- Pre-oxidized PAN thermal insulation systems
+- Lightweight FR fabric development
+- Heat protection multilayer structures
+防割/耐磨方向
+- EN388 cut level upgrades
+- Dexterity vs cut level on protective knits / glove fabrics（措辞按客户实际产品调整）
+- HPPE staple vs filament performance differences
+- Knitting efficiency optimization
+- Abrasion resistance vs softness balance
+- Lightweight cut-resistant fabric structures
+- Composite yarn design for industrial gloves
+欧洲市场趋势方向
+- Durable PPE materials for industrial laundering
+- Lightweight protective textile development
+- Sustainable high-performance fibers
+- REACH-compliant material systems
+- Long-life protective textile solutions
+--------------------------------------------------------------------------------
+【七】开发信核心铁律（精进｜无矛盾执行清单）
+--------------------------------------------------------------------------------
+1）先背调，再发送；不泛发；技术岗＞采购岗（研发/技术/面料开发推动试样概率更高）。
+2）开发信 ≠ 公司介绍：第一封唯一目标是「专业存活 + 一句轻回复」。
+3）正文建议 ≤5 行：短、克制、纯文本；避免列表体、排比、AI 感套话。
+4）只讲 1 个观察或 1 个痛点：降本 / 稳货 / 技术难题三选一，不堆优势。
+5）低压力收尾：给客户「退路」，避免逼问兴趣；禁止「Did you see my email?」。
+6）标题像同事往来：含客户业务关键词；禁用 Best price / Supplier of / Leading manufacturer。
+7）第一封：无附件、无链接、无 PDF/目录；emoji、全大写、多感叹号禁用。
+8）发送纪律：当地工作日 09:30–10:30（换算夏令时）；优先周二至周四；每天 ≤20 封；间隔 ≥5 分钟；不 BCC；不用群发工具；同一封最多抄送 1 人。
+9）弱化地域推销标签：先立专业身份，国籍与「巨大产能」首封不必强调。
+10）认证：第一封不堆；第二封或客户问再轻描淡写。
+11）叙事升级：避免 “we sell fabric”；用 engineered protective yarns & fabrics / multi-hazard material systems，与目录册定位一致但仍保持短邮件克制。
+--------------------------------------------------------------------------------
+【八】高回复主题行（分场景）
+--------------------------------------------------------------------------------
+成本导向（工厂/老板）
+- 10-15% cost cut for your cut-resistant materials
+- Improve margin on FR yarn & fabric
+- Stable backup supply for aramid materials
+通用安全款
+- Quick question about your protective fabrics
+- Regarding your PPE material supply
+技术方向型（更像同行）
+- Cut-resistant materials for your protective knits
+- Aramid yarn systems for FR applications
+- Your cut protection fabric line
+禁用主题行示例
+- Best Price Aramid Fabrics
+- High Quality Protective Materials
+- Supplier of Aramid and HPPE
+- We Supply PPE Textiles
+- Discount for Bulk Orders
+--------------------------------------------------------------------------------
+【八·附】主题行扩展库（按场景直接套｜每次只选一个钩子）
+--------------------------------------------------------------------------------
+Cut-resistant / glove & knit supply chain
+- Cut-resistant yarns for your protective knits
+- About your cut protection fabric line
+- A quick question on cut level vs dexterity
+- Materials for ANSI/EN cut protection projects
+FR / heat protection / industrial laundering
+- FR yarn options for industrial laundering
+- Aramid yarn systems for FR workwear
+- Heat & FR materials for your workwear line
+- A question on FR fabric durability after washing
+Arc flash
+- Arc-rated fabric consistency (IEC 61482)
+- Arc protection materials for your workwear
+- Regarding your arc-rated fabric direction
+Welding
+- Welding protective fabrics (EN ISO 11611)
+- Materials for welding workwear projects
+Backup supply / second source（更像采购对话）
+- Backup source for aramid materials
+- Alternative option for your FR materials
+Distributor / channel
+- Protective textile materials for your portfolio
+- Quick question about your PPE material range
+使用规则（避免像广告）
+- 10 个单词以内优先；不要用 offer/discount/supplier/best price。
+- 标准名只在你确定对方做该终端时出现（如 “IEC 61482”），否则用场景词（arc-rated / welding protective）。 
+--------------------------------------------------------------------------------
+【九】开发信模板（真人外贸风｜复制后务必按客户改写）
+--------------------------------------------------------------------------------
+模板 1｜工厂采购（成本/备份供应链）
+Subject: 10-15% cost cut for your cut-resistant materials
+Hi [Name],
+Came across your cut-resistant knitted fabrics.
+We help factories reduce aramid/HPPE material cost without changing specs.
+Would it make sense to compare one of your current items?
+Best regards,
+[Your Name]
+KEYSTONE | Jiangsu Kexu Textile Technology Co., Ltd.
+[WhatsApp] [Email]
+模板 2｜技术/产品经理（技术导向）
+Subject: Cut resistance & dexterity balance
+Hi [Name],
+Came across your EN388 Cut D fabric line.
+We’ve been working on a yarn structure that improves dexterity without dropping cut level.
+Worth a short call if you’re reviewing materials this quarter?
+Best regards,
+[Your Name]
+KEYSTONE | Jiangsu Kexu Textile Technology Co., Ltd.
+[WhatsApp] [Email]
+模板 3｜贸易商/分销商
+Subject: Improve margin on protective materials
+Hi [Name],
+We work with European distributors on aramid & HPPE yarn/fabric—often as margin improvement or stable backup supply.
+Open to comparing one SKU when convenient?
+Best regards,
+[Your Name]
+KEYSTONE | Jiangsu Kexu Textile Technology Co., Ltd.
+[WhatsApp] [Email]
+模板 4｜展会/领英线索
+Subject: Following up on your protective materials
+Hi [Name],
+Nice connecting at [展会名 / LinkedIn].
+You mentioned exploring new aramid suppliers—are you running any material trials right now?
+Best regards,
+[Your Name]
+KEYSTONE | Jiangsu Kexu Textile Technology Co., Ltd.
+[WhatsApp] [Email]
+万能极简公式范本（需替换客户观察句）
+Hi [Name],
+I came across your work in protective knitted fabrics—especially [客户具体产品线/动态].
+We focus on aramid and HPPE staple-fiber yarn systems for industrial protective textiles, close to several EU projects we’ve supported recently.
+No rush—happy to connect if useful.
+Best regards,
+[Your Name]
+--------------------------------------------------------------------------------
+【九·附】开场句库（背调钩子 10 秒可套｜每封只选 1 条）
+--------------------------------------------------------------------------------
+官网产品线钩子
+- I came across your [FR workwear / arc-rated / cut-resistant] range on your website.
+- Noticed your focus on [industrial laundering / lightweight FR / high-dexterity cut protection].
+新闻/展会/认证钩子
+- Saw your update about [new product / certification / exhibition] recently.
+- Noticed your team has been active around [A+A / Intersec / industry events] this year.
+职位与语境钩子（写给技术岗更自然）
+- I’m reaching out as we work on similar protective textile material systems (FR / cut / heat).
+- Quick question from a materials side: how do you usually balance [cut level vs dexterity / comfort vs protection]?
+区域/市场钩子（先识别欧系 vs 美系）
+- I noticed you serve mainly the [EU / US] market for industrial PPE.
+- Looks like your products are positioned for [EU compliance / NFPA-driven] workwear projects.
+禁用提醒
+- 不要用 “We are a professional manufacturer…” 这类自我介绍开头。
+- 不要第一句就列标准或发目录；先让对方觉得你看过他的网站。
+--------------------------------------------------------------------------------
+【九·附2】低压力收尾问题库（替代 “Are you interested?”）
+--------------------------------------------------------------------------------
+Yes/No（最省回复成本）
+- Would it be relevant to compare one item you’re currently using?
+- Are you reviewing any [FR / arc / cut] materials this quarter?
+二选一（更像同行沟通）
+- Do you mainly prioritize [durability after industrial laundering] or [handfeel / comfort] for this line?
+- For cut protection, are you aiming for [higher cut level] or [better dexterity] right now?
+轻确认（给退路）
+- If this isn’t on your roadmap now, totally fine—I can check back later.
+- If someone else owns materials evaluation on your side, happy to reach out to the right person.
+--------------------------------------------------------------------------------
+【十】开发信禁句与浮夸词（勿用）
+--------------------------------------------------------------------------------
+禁用套话示例
+- We are a professional manufacturer…
+- We have good quality & best price…
+- We have many years of experience…（改为具体能力或应用观察）
+- Our products have many certifications…（首封）
+- Please find our catalog attached…
+- Aligns perfectly with your needs / perfect match
+- Happy to share our datasheets（首封）
+- We are a leading supplier…
+跟进禁用
+- Did you see my email?
+- I’m following up on my previous email.（可改为轻提醒「may have missed」）
+- Please let me know if you are interested.（改为退路式收尾，见下节）
+--------------------------------------------------------------------------------
+【十一】跟进节奏与统一话术（精进｜避免「interest」推销感）
+--------------------------------------------------------------------------------
+节奏
+- 第一封后 ≥7 个工作日再跟进
+- 第二次间隔 10–14 天
+- 第三次间隔 21 天
+- 超过三次无回复：转季度轻触达（新品/趋势/简短价值信息）
+跟进 1（轻提醒 + 退路）
+Hi [Name],
+Just a quick note following up on my earlier message about aramid/HPPE materials for protective textiles.
+No rush—may have missed in the inbox.
+If it’s not a priority now, totally fine.
+Best regards,
+[Your Name]
+跟进 2（最后一次，留后路）
+Hi [Name],
+I’ll keep this short—last check-in on aramid/HPPE materials for protective applications.
+If this isn’t relevant right now, no problem—I’ll reconnect in a few months if anything changes.
+Best regards,
+[Your Name]
+常见拒绝回复
+场景 1：已有稳定供应商
+Hi [Name],
+Totally understand—stability comes first.
+We’re happy to stay as a backup option if you ever need an alternative for aramid/HPPE.
+I’ll share occasional updates; feel free to reach out anytime.
+Best regards,
+[Your Name]
+场景 2：不采购原材料
+Hi [Name],
+Thanks for clarifying.
+If you ever meet fabric producers who need aramid/HPPE yarns, I’d appreciate an intro.
+Best regards,
+[Your Name]
+场景 3：只和本地供应商合作
+Hi [Name],
+Understood on local preference.
+We support many EU customers on technical consistency and documentation—just wanted you to know we exist if your supply base ever expands.
+Best regards,
+[Your Name]
+--------------------------------------------------------------------------------
+【十一·附】季度轻触达（Dormant 客户维持存在感｜每次 2–3 句）
+--------------------------------------------------------------------------------
+新产品/新结构（不发附件版）
+Hi [Name],
+Quick note—we’ve recently developed a [lightweight FR / softer cut-resistant] yarn structure for protective textiles.
+If you’re reviewing materials this quarter, happy to share details.
+Best regards,
+[Your Name]
+行业趋势/法规（不装专家，点到为止）
+Hi [Name],
+I saw more customers asking for [industrial laundering durability / lightweight PPE] lately.
+Curious if you’re seeing the same on your side.
+Best regards,
+[Your Name]
+展会触达（简单、不推销）
+Hi [Name],
+Will you be at [A+A / Intersec / local event] this year?
+Happy to say hello if you’re attending.
+Best regards,
+[Your Name]
+--------------------------------------------------------------------------------
+【十二】不同职位切入侧重点（简述）
+--------------------------------------------------------------------------------
+Product Manager：市场趋势、升级路径、差异化、成本结构
+Technical Manager：工艺窗口、测试数据、洗涤/电弧/阻燃一致性
+R&D：新材料结构、混纺/复合纱、联合验证方案
+--------------------------------------------------------------------------------
+【十三】客户开发 SOP｜执行总则
+--------------------------------------------------------------------------------
+1）第一封目标：不被删；专业感；同行感；愿意继续对话——不成交、不讲全优势。
+2）定位：protective textile 同行 / PPE 材料体系参与者——非低价推销。
+3）篇幅：多写客户（业务观察70%），少写自己（30%）。
+4）SOP 是辅助系统；长期靠行业理解加深。
+永久聚焦方向
+- 芳纶/FR、电弧、焊接防护、高温、消防、工业防护
+- 防切割纱线/面料与多功能复合（防割+阻燃/耐热/抗静电等）
+PASS 方向：时尚家纺汽车滤材医疗等非人身防护主导场景（除非战略例外）
+--------------------------------------------------------------------------------
+【十三·附】每日工作流（新人照做版｜每天 45–90 分钟打底）
+--------------------------------------------------------------------------------
+目标：稳定输出 80 分，长期刷存在感，提高「有效技术对话率」。\n
+每日固定动作（最小闭环）
+1）找线索（15–25 分钟）
+   - 选择 1 个国家/细分（例如：Germany + FR workwear / Italy + cut-resistant knits）。
+   - 用官网/LinkedIn 快筛：命中 PPE 语言 + 场景 + 活跃度，才进入背调。
+2）背调与记录（15–30 分钟）
+   - 记录字段：国家/时区、客户类型、产品线、标准关键词、联系人、客户等级、下次动作日期。
+   - 提取 1 个“钩子”：产品线/新闻/认证/展会/招人信息/材料词。
+3）写并发送（15–25 分钟）
+   - 选 1 个主题行 + 1 个开场钩子 + 1 个痛点 + 1 个低压力收尾。
+   - 纯文本；无附件/链接；发送在对方 09:30–10:30。
+4）发送后立刻安排跟进（2 分钟）
+   - 在表里写：Follow-up #1 日期（+7 个工作日）；并标记状态 Contacted。
+每周复盘（10 分钟）
+- 统计：发送量、回复量、进入 Engaging 的数量（技术对话率）。
+- 把高回复的主题行/钩子/收尾句复制到【八·附】【九·附2】里迭代。
+--------------------------------------------------------------------------------
+【十四】开发前 3 分钟筛选（官网快筛）
+--------------------------------------------------------------------------------
+必看 4 项（不符则降优先级或 PASS）
+1）是否有 PPE / 工业防护技术语言：EN388、EN ISO 11612、EN ISO 11611、IEC 61482、NFPA 2112、ASTM F1959、arc flash、FR、welding、firefighter、industrial PPE（不必求全，命中其一即可提高优先级）
+2）是否有真实应用场景（非纯素材站）
+3）是否有开发能力：R&D、textile engineering、fabric development（纯倒货谨慎）
+4）是否活跃：LinkedIn、新闻、展会、新品动态
+体量建议
+优先：中小型 PPE、FR 工装厂、技术型防护面料厂、消防/电弧体系、有研发贸易商、区域工业防护品牌
+谨慎：巨头、超长账期、极低 MOQ、纯比价、一次性单
+--------------------------------------------------------------------------------
+【十四·附】线索来源与采集 SOP（把“找客户”做成可复制动作）
+--------------------------------------------------------------------------------
+目标：每天稳定新增可开发线索，并保证不重复、不走偏赛道。
+主渠道（按优先级建议）
+1）Google/官网检索（最快、最干净）
+   - 搜索词组合（国家 + 场景 + 关键词）：\n
+     - “FR workwear manufacturer” + country\n
+     - “arc rated fabric” OR “IEC 61482” + country\n
+     - “cut resistant fabric” OR “EN 388” + country\n
+     - “welding protective clothing” OR “EN ISO 11611” + country\n
+   - 找到官网后，立刻做【十四】快筛 + 记录字段 + 抓“钩子”。
+2）LinkedIn（找对人最强）
+   - 公司页 + 员工搜索：Product Manager / Technical Manager / R&D / Fabric Development / Application Engineer。
+   - 线索优先级：发帖活跃、有新品/展会/招聘信息的公司优先。
+3）展会/协会/行业名录（高质量但更慢）
+   - A+A、Intersec、Techtextil 等参展商名单；本国安全防护协会会员名录。
+   - 用于建立“行业圈存在感”，适合季度轻触达。
+4）竞争对手/同赛道客户页（隐形高质量）
+   - 找到 1 家强对标公司后，反向搜 “similar companies” / “competitors” / “related companies”。
+5）B2B 平台（作为补充，不做主渠道）
+   - 容易混入倒货与比价客户；只用来补充邮箱/联系人，仍以官网与 LinkedIn 为准。
+采集步骤（每条线索 3–6 分钟）
+1）确认赛道：命中 PPE 语言/标准/场景 → 才录入。
+2）抓一个钩子：产品线/新闻/认证/展会/招人/材料词（写进备注，服务首封开场）。
+3）找人顺序：技术/产品/研发 → 再采购（能推动测试的人优先）。
+4）录入客户表字段：至少填国家/时区/客户类型/产品线/标准关键词/联系人/等级/下次动作日期。
+去重与数据卫生（决定你后面是否会“越做越乱”）
+- 以“公司域名”为唯一键：同域名只保留 1 条公司记录，联系人做子字段或附加行。
+- 每次新增前先搜域名：避免重复开发同一家公司不同邮箱。
+- 邮箱质量分级（建议）：\n
+  A：公司域名邮箱（最优）\n
+  B：部门邮箱（如 info@，可用但需更强背调钩子）\n
+  C：免费邮箱（谨慎，容易是小贸易/个人）
+- 记录“来源”：Google / LinkedIn / Exhibition / Directory / Referral，便于复盘哪类来源最有效。
+--------------------------------------------------------------------------------
+【十五】ABC 分级与生命周期
+--------------------------------------------------------------------------------
+A（约 70% 精力）：真 PPE + 研发能力 + 技术沟通好 + 中长期供应可能 + 中型规模 + 欧/北美成熟市场
+动作：深度背调、定制首封、LinkedIn 维护、长期技术跟进
+B（约 25% 精力）：赛道部分匹配
+动作：标准定制、正常跟进
+C（约 5% 精力）：比价、官网弱、不技术、低质量贸易商
+动作：轻开发、最多跟进 2 次
+状态标签（必须维护）
+New / Contacted / Replied / Engaging / Sampling / Quotation / Dormant（60 天无互动）/ Converted / Rejected
+高风险信号（满足任意 2 项建议降级 C）
+一味压价、不聊技术、不透露应用、样品积极无项目、非公司邮箱、LinkedIn 空白、官网极简、回避 MOQ、强要长账期
+停止重点投入（满足任意 2 项转 Dormant）
+连续 3 次只问价、拒绝技术沟通、多次索样无反馈、90 天无实质推进、回避付款/MOQ、套资料
+--------------------------------------------------------------------------------
+【十六】客户数据库固定字段（必填）
+--------------------------------------------------------------------------------
+1 国家/城市
+2 时区
+3 公司规模
+4 客户类型
+5 核心产品
+6 材料体系
+7 PPE 标准
+8 联系人
+9 LinkedIn
+10 客户等级
+11 生命周期状态
+12 回复情况
+13 回复风格
+14 当前痛点
+15 已发送内容摘要
+16 下次跟进时间
+17 风险等级
+18 成交概率
+--------------------------------------------------------------------------------
+【十七】邮件发送技术规则
+--------------------------------------------------------------------------------
+发件人显示名建议统一：Elsa | KEYSTONE（或公司规定格式）
+签名极简示例：
+[Your Name]
+KEYSTONE | Jiangsu Kexu Textile Technology Co., Ltd.
+WhatsApp: +86 _________
+Email: ___________
+格式：纯文本；无花哨格式；跟进标题：Re: 原主题
+--------------------------------------------------------------------------------
+【十八】LinkedIn 与 WhatsApp
+--------------------------------------------------------------------------------
+LinkedIn：目标为行业存在感与熟悉度，非硬推销；开发后尽量连接。
+WhatsApp：仅轻提醒查收邮件或短确认；禁长文、语音轰炸、周末骚扰、一加好友发目录。
+--------------------------------------------------------------------------------
+【十九】样品与报价
+--------------------------------------------------------------------------------
+样品前必须确认：应用方向、PPE 标准、量级/节奏、已进入技术讨论；缺失则暂缓寄样。
+样品：可免样品费；运费默认到付；同客户免费寄样建议 ≤2 次（以公司政策为准）。
+第一封不报价。报价前确认：规格、数量、交期、测试要求；只报对应 SKU；有效期建议 30 天；不发全系列价目。
+--------------------------------------------------------------------------------
+【二十】客户回复后推进（四步）
+--------------------------------------------------------------------------------
+1 先聊应用、当前材料、当前问题
+2 再聊针对性方案（可轻描淡写提欧洲同类项目经验，不点名）
+3 明确兴趣后再发对应 datasheet
+4 最后样品与报价
+--------------------------------------------------------------------------------
+【二十·附】客户一回复，你只做“第一轮 5 问”（把对话拉进技术评估）
+--------------------------------------------------------------------------------
+目标：用最少问题，确认是否真项目 + 走到可报价/可寄样的必要信息。\n
+第一轮必问 5 问（按顺序，写法要轻）
+1）终端用途 / 场景（决定你该谈 FR/arc/cut/welding 哪条线）
+   - “Is this for [FR workwear / arc protection / welding / cut protection] end use?”
+2）目标市场与合规体系（EU vs US，决定你提 EN/IEC 还是 NFPA/ASTM）
+   - “Are you mainly supplying EU or US markets for this line?”
+3）当前材料与痛点（只要 1 个痛点）
+   - “What’s the main issue you want to improve—durability after industrial laundering, handfeel/comfort, or supply consistency?”
+4）关键规格（先问“你们怎么定义规格”，不要一上来要完整表）
+   - “Any key specs you can share (yarn count / blend / fabric construction), or a reference item name?”
+5）阶段与时间（判断要不要发资料/寄样/报价）
+   - “Are you at early screening, lab testing, or preparing for bulk this quarter?”
+写法原则（避免变成审问）
+- 一次只问 2–3 个问题，分两轮拿齐信息；对方回答后再追问剩下的。\n
+- 客户只回一句也没关系：先承接他的那一句，再补一个最关键问题。\n
+- 任何时候客户没提到“项目”，你先别主动报价/寄样，先把场景与阶段问出来。\n
+你拿到信息后，下一步动作（固定节奏）
+- 早期筛选：回 3–5 句 + 给 1 个方向性建议（不发附件）。\n
+- 进入测试：发 1–2 页对应 datasheet（不是目录）+ 提议样品规则。\n
+- 准备放量：确认 MOQ/交期/测试要求 → 报价（只报对应 SKU）。\n
+--------------------------------------------------------------------------------
+【二十一】复盘节奏
+--------------------------------------------------------------------------------
+每月：开发量、回复率、有效技术对话率
+每季度：国家/客户类型/切入角度有效性、时间黑洞客户类型
+有效规则固化；无效规则删除
+--------------------------------------------------------------------------------
+【二十二】心态与周期
+--------------------------------------------------------------------------------
+回复率 10% 已属优秀；重视「技术对话率」。
+PPE 成交周期常见 6–12 个月。
+客户不回复多为暂无需求，不必内耗；把时间给下一家。
+单封邮件建议 ≤15 分钟定稿，追求稳定 80 分输出。
+================================================================================
+文档结束｜使用时请同步官网与法务最新表述｜祝开单顺利
+======================================================
