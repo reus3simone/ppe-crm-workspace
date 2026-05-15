@@ -1,18 +1,17 @@
-import os
+import sqlite3
 import re
+import os
 import pandas as pd
 from datetime import datetime, timedelta, date
-import psycopg2
-import psycopg2.extras
-
 
 class Database:
     def __init__(self):
+        self.db_path = "ppe_customers.db"
         self._ready = False
         self._init_error = None
+        self._ensure_ready()
 
     def _ensure_ready(self):
-        """延迟初始化：第一次调用数据库方法时才建表"""
         if self._ready:
             return
         if self._init_error:
@@ -24,82 +23,22 @@ class Database:
             self._init_error = str(e)
             raise
 
-    # ==============================================================
-    # 数据库连接（Supabase PostgreSQL）
-    # ==============================================================
-
-    def _ensure_ready(self):
-        """延迟初始化：第一次调用数据库方法时才建表"""
-        if self._ready:
-            return
-        if self._init_error:
-            raise Exception(self._init_error)
+    def get_connection(self):
         try:
-            self.init_database()
-            self._ready = True
-        except Exception as e:
-            self._init_error = str(e)
-            raise
-
-    def _get_config(self):
-        """从 Streamlit secrets 或环境变量获取 Supabase 配置"""
-        cfg = {}
-        try:
-            import streamlit as st
-            cfg['host'] = st.secrets.get("supabase_host", "")
-            cfg['port'] = st.secrets.get("supabase_port", "5432")
-            cfg['dbname'] = st.secrets.get("supabase_database", "postgres")
-            cfg['user'] = st.secrets.get("supabase_user", "postgres")
-            cfg['password'] = st.secrets.get("supabase_password", "")
-        except Exception:
-            cfg['host'] = os.environ.get("SUPABASE_HOST", "")
-            cfg['port'] = os.environ.get("SUPABASE_PORT", "5432")
-            cfg['dbname'] = os.environ.get("SUPABASE_DATABASE", "postgres")
-            cfg['user'] = os.environ.get("SUPABASE_USER", "postgres")
-            cfg['password'] = os.environ.get("SUPABASE_PASSWORD", "")
-        return cfg
-
-    def _connect(self):
-        """内部：直接创建连接（不触发 init，避免递归）"""
-        cfg = self._get_config()
-        if not cfg['host'] or not cfg['password']:
-            raise Exception(
-                "Supabase 未配置！请在 Streamlit Cloud 的 Secrets 中设置：\n\n"
-                "supabase_host = \"db.xxx.supabase.co\"\n"
-                "supabase_password = \"your-password\"\n\n"
-                "其他可选：supabase_port、supabase_database、supabase_user"
-            )
-        try:
-            conn = psycopg2.connect(
-                host=cfg['host'],
-                port=cfg['port'],
-                dbname=cfg['dbname'],
-                user=cfg['user'],
-                password=cfg['password'],
-                sslmode='require'
-            )
-            conn.cursor_factory = psycopg2.extras.RealDictCursor
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
             return conn
         except Exception as e:
             raise Exception(f"数据库连接失败：{str(e)}")
 
-    def get_connection(self):
-        """对外：获取连接前确保表已建好"""
-        self._ensure_ready()
-        return self._connect()
-
-    # ==============================================================
-    # 初始化建表
-    # ==============================================================
-
     def init_database(self):
         try:
-            conn = self._connect()
+            conn = self.get_connection()
             cursor = conn.cursor()
 
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS customers (
-                    id SERIAL PRIMARY KEY,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                     company_name TEXT NOT NULL,
                     contact_person TEXT,
                     email TEXT,
@@ -118,8 +57,8 @@ class Database:
                     sample_tracking_number TEXT,
                     sample_feedback TEXT,
                     whatsapp TEXT,
-                    created_at TIMESTAMP DEFAULT NOW(),
-                    updated_at TIMESTAMP DEFAULT NOW(),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     assigned_to TEXT DEFAULT 'Elsa',
                     owner_department TEXT DEFAULT '外贸部',
                     development_status TEXT DEFAULT '初次开发',
@@ -129,76 +68,73 @@ class Database:
                 )
             """)
 
-            # 检查并补充缺失列（兼容旧数据迁移）
-            cursor.execute("""
-                SELECT column_name FROM information_schema.columns
-                WHERE table_name = 'customers' AND table_schema = 'public'
-            """)
-            existing_cols = {row['column_name'] for row in cursor.fetchall()}
-
-            migrates = [
-                ('assigned_to', 'TEXT', "'Elsa'"),
-                ('owner_department', 'TEXT', "'外贸部'"),
-                ('development_status', 'TEXT', "'初次开发'"),
-                ('source', 'TEXT', "'Google'"),
+            cursor.execute("PRAGMA table_info(customers)")
+            existing_columns = [row[1] for row in cursor.fetchall()]
+            new_columns = [
+                ('assigned_to', 'TEXT', 'Elsa'),
+                ('owner_department', 'TEXT', '外贸部'),
+                ('development_status', 'TEXT', '初次开发'),
+                ('source', 'TEXT', 'Google'),
                 ('last_follow_up_date', 'DATE', None),
-                ('auto_score', 'INTEGER', '0'),
+                ('auto_score', 'INTEGER', 0)
             ]
-            for col, typ, default in migrates:
-                if col not in existing_cols:
+            for col, typ, default in new_columns:
+                if col not in existing_columns:
                     if default is not None:
-                        cursor.execute(f"ALTER TABLE customers ADD COLUMN IF NOT EXISTS {col} {typ} DEFAULT {default}")
+                        cursor.execute(f"ALTER TABLE customers ADD COLUMN {col} {typ} DEFAULT '{default}'")
                     else:
-                        cursor.execute(f"ALTER TABLE customers ADD COLUMN IF NOT EXISTS {col} {typ}")
+                        cursor.execute(f"ALTER TABLE customers ADD COLUMN {col} {typ}")
 
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS email_history (
-                    id SERIAL PRIMARY KEY,
-                    customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    customer_id INTEGER NOT NULL,
                     version INTEGER NOT NULL,
                     email_subject TEXT,
                     email_content TEXT,
-                    created_at TIMESTAMP DEFAULT NOW()
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (customer_id) REFERENCES customers (id) ON DELETE CASCADE
                 )
             """)
 
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS knowledge_base (
-                    id SERIAL PRIMARY KEY,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                     category TEXT NOT NULL,
                     title TEXT NOT NULL,
                     content TEXT,
-                    created_at TIMESTAMP DEFAULT NOW()
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
 
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS system_settings (
-                    id SERIAL PRIMARY KEY,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                     setting_key TEXT UNIQUE NOT NULL,
                     setting_value TEXT,
-                    updated_at TIMESTAMP DEFAULT NOW()
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
 
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS email_templates (
-                    id SERIAL PRIMARY KEY,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL,
                     category TEXT,
                     subject TEXT,
                     content TEXT,
-                    created_at TIMESTAMP DEFAULT NOW()
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
 
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS follow_up_timeline (
-                    id SERIAL PRIMARY KEY,
-                    customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    customer_id INTEGER NOT NULL,
                     event_type TEXT NOT NULL,
                     event_content TEXT,
-                    created_at TIMESTAMP DEFAULT NOW()
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (customer_id) REFERENCES customers (id) ON DELETE CASCADE
                 )
             """)
 
@@ -244,30 +180,24 @@ C级客户标准：
 
             for key, value in default_settings.items():
                 cursor.execute("""
-                    INSERT INTO system_settings (setting_key, setting_value)
-                    VALUES (%s, %s)
-                    ON CONFLICT (setting_key) DO NOTHING
+                    INSERT OR IGNORE INTO system_settings (setting_key, setting_value)
+                    VALUES (?, ?)
                 """, (key, value))
 
             conn.commit()
             conn.close()
             self._init_all_auto_scores()
         except Exception as e:
-            raise Exception(f"数据库初始化失败：{str(e)}")
-
-    # ==============================================================
-    # 自动评分
-    # ==============================================================
+            pass
 
     def _extract_domain(self, email_or_website):
         if not email_or_website:
-            return None, None
-        if '@' in str(email_or_website):
-            return str(email_or_website).split('@')[-1].lower(), None
-        if '://' in str(email_or_website):
-            domain = str(email_or_website).split('://')[-1].split('/')[0].lower().replace('www.', '')
-            return None, domain
-        return None, str(email_or_website).split('/')[0].lower().replace('www.', '')
+            return None
+        if '@' in email_or_website:
+            return email_or_website.split('@')[-1].lower()
+        if '://' in email_or_website:
+            return email_or_website.split('://')[-1].split('/')[0].lower().replace('www.', '')
+        return email_or_website.split('/')[0].lower().replace('www.', '')
 
     def _calculate_auto_score(self, customer_data):
         score = 0
@@ -281,10 +211,9 @@ C级客户标准：
             score += 20
         if any(k in products or k in industry for k in ['fr', '阻燃', 'flame', 'fire', 'arc', 'welding']):
             score += 20
-        eu_na = ['germany', 'france', 'italy', 'spain', 'uk', 'netherlands', 'belgium',
-                 'sweden', 'norway', 'finland', 'denmark', 'poland', 'czech', 'austria',
-                 'switzerland', 'usa', 'united states', 'canada', 'mexico']
-        if any(c in country for c in eu_na):
+        eu_countries = ['germany', 'france', 'italy', 'spain', 'uk', 'netherlands', 'belgium', 'sweden', 'norway', 'finland', 'denmark', 'poland', 'czech', 'austria', 'switzerland']
+        na_countries = ['usa', 'united states', 'canada', 'mexico']
+        if any(c in country for c in eu_countries + na_countries):
             score += 15
         if any(k in products or k in industry for k in ['en ', 'nfpa', 'iec', 'astm', 'iso']):
             score += 15
@@ -311,28 +240,27 @@ C级客户标准：
                 score = self._calculate_auto_score(row_dict)
                 existing_grade = str(row_dict.get('customer_grade', '')).strip()
                 if existing_grade and existing_grade not in ('A', 'B', 'C', ''):
-                    conn.execute("UPDATE customers SET auto_score = %s WHERE id = %s", (score, row['id']))
+                    conn.execute("UPDATE customers SET auto_score = ? WHERE id = ?", (score, row['id']))
                 elif not existing_grade or existing_grade in ('A', 'B', 'C'):
                     grade = self._get_customer_grade_by_score(score)
-                    conn.execute("UPDATE customers SET auto_score = %s, customer_grade = %s WHERE id = %s", (score, grade, row['id']))
+                    conn.execute("UPDATE customers SET auto_score = ?, customer_grade = ? WHERE id = ?", (score, grade, row['id']))
                 else:
-                    conn.execute("UPDATE customers SET auto_score = %s WHERE id = %s", (score, row['id']))
+                    conn.execute("UPDATE customers SET auto_score = ? WHERE id = ?", (score, row['id']))
             conn.commit()
             conn.close()
         except Exception:
             pass
 
-    # ==============================================================
-    # 冲突检测
-    # ==============================================================
-
     def check_customer_conflict(self, customer_data, exclude_id=None):
         conflicts = []
         conn = self.get_connection()
+        query = "SELECT * FROM customers WHERE 1=1"
+        params = []
         if exclude_id:
-            df = pd.read_sql("SELECT * FROM customers WHERE id != %s", conn, params=(exclude_id,))
-        else:
-            df = pd.read_sql("SELECT * FROM customers", conn)
+            query += " AND id != ?"
+            params.append(exclude_id)
+
+        df = pd.read_sql(query, conn, params=params)
         conn.close()
 
         if df.empty:
@@ -344,8 +272,7 @@ C级客户标准：
         new_phone = str(customer_data.get('phone', '')).strip()
         new_whatsapp = str(customer_data.get('whatsapp', '')).strip()
         new_linkedin = str(customer_data.get('linkedin', '')).strip().lower()
-        new_email_domain, new_web_domain = self._extract_domain(new_email or new_website)
-        new_domain = new_email_domain or new_web_domain
+        new_domain = self._extract_domain(new_email) or self._extract_domain(new_website)
 
         for _, existing in df.iterrows():
             existing = dict(existing)
@@ -375,9 +302,7 @@ C级客户标准：
                     'customer_id': existing_id
                 }]
 
-            ex_email_domain, ex_web_domain = self._extract_domain(existing_email or existing_website)
-            ex_domain = ex_email_domain or ex_web_domain
-            if new_domain and ex_domain and new_domain == ex_domain:
+            if new_domain and new_domain == (self._extract_domain(existing_email) or self._extract_domain(existing_website)):
                 conflicts.append({
                     'level': 'warning',
                     'message': f"🟠 高度疑似！域名 {new_domain} 已存在于客户 {existing['company_name']}",
@@ -417,10 +342,6 @@ C级客户标准：
             return 2, conflicts
         return 0, []
 
-    # ==============================================================
-    # 客户保护
-    # ==============================================================
-
     def check_customer_protection(self, customer_id, current_user='Elsa'):
         customer, err = self.get_customer(customer_id)
         if err or not customer:
@@ -436,19 +357,12 @@ C级客户标准：
             return True, "客户未分配"
         if last_follow_up:
             try:
-                if isinstance(last_follow_up, str):
-                    last_date = datetime.strptime(last_follow_up, '%Y-%m-%d').date()
-                else:
-                    last_date = last_follow_up
+                last_date = datetime.strptime(last_follow_up, '%Y-%m-%d').date()
                 if (datetime.now().date() - last_date).days > release_days:
                     return True, f"客户已自动释放（{release_days}天无跟进）"
             except Exception:
                 pass
         return False, f"客户处于 {assigned_to} 的{protection_days}天保护期内，禁止修改"
-
-    # ==============================================================
-    # 客户 CRUD
-    # ==============================================================
 
     def add_customer(self, customer_data):
         try:
@@ -465,7 +379,7 @@ C级客户标准：
 
             score = self._calculate_auto_score(customer_data)
             customer_data['auto_score'] = score
-            manual_grade = str(customer_data.get('customer_grade', '')).strip()
+            manual_grade = customer_data.get('customer_grade', '').strip()
             if manual_grade not in ('A', 'B', 'C'):
                 customer_data['customer_grade'] = self._get_customer_grade_by_score(score)
             customer_data['last_follow_up_date'] = datetime.now().strftime('%Y-%m-%d')
@@ -477,35 +391,35 @@ C级客户标准：
             conn = self.get_connection()
             cursor = conn.cursor()
             fields = list(clean_data.keys())
-            placeholders = ', '.join(['%s' for _ in fields])
+            placeholders = ', '.join(['?' for _ in fields])
             values = [clean_data[f] for f in fields]
 
-            query = f"INSERT INTO customers ({', '.join(fields)}) VALUES ({placeholders}) RETURNING id"
+            query = f"INSERT INTO customers ({', '.join(fields)}) VALUES ({placeholders})"
             cursor.execute(query, values)
-            customer_id = cursor.fetchone()['id']
+            customer_id = cursor.lastrowid
 
-            # ===== 修 bug：如果开发进度已表明发过信，自动补 timeline =====
+            # ===== 修 bug：如果导入的开发进度已表明发过信，自动补 timeline =====
             dev_status = str(clean_data.get('development_status', '')).strip()
             if dev_status in ('已发开发信', '已报价', '样品阶段', '已成交'):
                 cursor.execute("""
                     INSERT INTO follow_up_timeline (customer_id, event_type, event_content)
-                    VALUES (%s, %s, %s)
+                    VALUES (?, ?, ?)
                 """, (customer_id, "生成邮件",
                       f"导入标记：客户在表格中已标注为「{dev_status}」，跳过首轮开发"))
                 cursor.execute("""
-                    UPDATE customers SET last_follow_up_date = %s WHERE id = %s
+                    UPDATE customers SET last_follow_up_date = ? WHERE id = ?
                 """, (datetime.now().strftime('%Y-%m-%d'), customer_id))
 
             cursor.execute("""
                 INSERT INTO follow_up_timeline (customer_id, event_type, event_content)
-                VALUES (%s, %s, %s)
+                VALUES (?, ?, ?)
             """, (customer_id, "创建客户", f"成功新建客户档案 | 自动评分：{score}分 | 等级：{clean_data['customer_grade']}级"))
 
             if conflicts:
                 conflict_msg = "; ".join([c['message'] for c in conflicts])
                 cursor.execute("""
                     INSERT INTO follow_up_timeline (customer_id, event_type, event_content)
-                    VALUES (%s, %s, %s)
+                    VALUES (?, ?, ?)
                 """, (customer_id, "冲突提醒", conflict_msg))
 
             conn.commit()
@@ -515,19 +429,23 @@ C级客户标准：
             return None, str(e)
 
     def _parse_contacts(self, raw_text):
+        """从联系方式字段中提取邮箱、电话、联系人姓名，返回 (email, phone, contact_person)"""
         email, phone, person = '', '', ''
         if not raw_text or not str(raw_text).strip():
             return email, phone, person
         text = str(raw_text).strip()
 
+        # 提取邮箱
         email_match = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', text)
         if email_match:
             email = email_match.group(0).strip()
 
+        # 提取电话号码
         phone_match = re.search(r'(?:(?:Tel|电话|Phone)[.:]*\s*)?(\+?\d{1,4}[\s-]?\d{2,5}[\s-]?\d{3,5}[\s-]?\d{2,4}(?:[\s-]?\d{2,5})?)', text)
         if phone_match:
             phone = phone_match.group(1).strip()
 
+        # 提取联系人姓名
         name_char = r'[A-ZÀ-ɏ][-a-zA-ZÀ-ɏ]+'
         m1 = re.search(r'(?:Mr\.?|Ms\.?|Mrs\.?)\s+(' + name_char + r'(?:\s+' + name_char + r'){1,2})', text)
         if m1:
@@ -564,6 +482,7 @@ C级客户标准：
         return clean(email), clean(phone), clean(person)
 
     def batch_import_customers(self, df):
+        """批量导入客户，自动识别表格字段映射。返回 (成功数, 重复数, 失败数, 错误信息)"""
         col_map = {
             '公司': 'company_name', '公司名称': 'company_name',
             '国家': 'country',
@@ -652,20 +571,20 @@ C级客户标准：
                 merged = {**existing, **customer_data}
                 score = self._calculate_auto_score(merged)
                 customer_data['auto_score'] = score
-                grade_val = str(customer_data.get('customer_grade', '')).strip()
+                grade_val = customer_data.get('customer_grade', '').strip()
                 if grade_val not in ('A', 'B', 'C'):
                     customer_data['customer_grade'] = self._get_customer_grade_by_score(score)
 
             customer_data['updated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             conn = self.get_connection()
             cursor = conn.cursor()
-            set_clause = ', '.join([f"{k} = %s" for k in customer_data.keys()])
+            set_clause = ', '.join([f"{k} = ?" for k in customer_data.keys()])
             values = list(customer_data.values()) + [customer_id]
-            query = f"UPDATE customers SET {set_clause} WHERE id = %s"
+            query = f"UPDATE customers SET {set_clause} WHERE id = ?"
             cursor.execute(query, values)
             cursor.execute("""
                 INSERT INTO follow_up_timeline (customer_id, event_type, event_content)
-                VALUES (%s, %s, %s)
+                VALUES (?, ?, ?)
             """, (customer_id, "更新信息", "客户资料已修改更新"))
             conn.commit()
             conn.close()
@@ -680,9 +599,9 @@ C级客户标准：
                 return False, msg
             conn = self.get_connection()
             cursor = conn.cursor()
-            cursor.execute("DELETE FROM customers WHERE id = %s", (customer_id,))
-            cursor.execute("DELETE FROM email_history WHERE customer_id = %s", (customer_id,))
-            cursor.execute("DELETE FROM follow_up_timeline WHERE customer_id = %s", (customer_id,))
+            cursor.execute("DELETE FROM customers WHERE id = ?", (customer_id,))
+            cursor.execute("DELETE FROM email_history WHERE customer_id = ?", (customer_id,))
+            cursor.execute("DELETE FROM follow_up_timeline WHERE customer_id = ?", (customer_id,))
             conn.commit()
             conn.close()
             return True, None
@@ -693,7 +612,7 @@ C级客户标准：
         try:
             conn = self.get_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM customers WHERE id = %s", (customer_id,))
+            cursor.execute("SELECT * FROM customers WHERE id = ?", (customer_id,))
             customer = cursor.fetchone()
             conn.close()
             return dict(customer) if customer else None, None
@@ -709,20 +628,16 @@ C级客户标准：
         except Exception as e:
             return pd.DataFrame(), str(e)
 
-    # ==============================================================
-    # 时间轴 & 跟进
-    # ==============================================================
-
     def add_timeline_event(self, customer_id, event_type, event_content):
         try:
             conn = self.get_connection()
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO follow_up_timeline (customer_id, event_type, event_content)
-                VALUES (%s, %s, %s)
+                VALUES (?, ?, ?)
             """, (customer_id, event_type, event_content))
             cursor.execute("""
-                UPDATE customers SET last_follow_up_date = %s WHERE id = %s
+                UPDATE customers SET last_follow_up_date = ? WHERE id = ?
             """, (datetime.now().strftime('%Y-%m-%d'), customer_id))
             conn.commit()
             conn.close()
@@ -730,11 +645,8 @@ C级客户标准：
         except Exception as e:
             return False, str(e)
 
-    # ==============================================================
-    # 跟进统计 & 健康度
-    # ==============================================================
-
     def get_customer_follow_up_stats(self, customer_id):
+        """获取客户跟进统计"""
         try:
             tl_df, _ = self.get_customer_timeline(customer_id)
             total = len(tl_df)
@@ -756,6 +668,7 @@ C级客户标准：
             return None, str(e)
 
     def get_all_customers_with_stats(self):
+        """获取所有客户并附带跟进次数和最后活动时间"""
         try:
             conn = self.get_connection()
             df = pd.read_sql("SELECT * FROM customers ORDER BY created_at DESC", conn)
@@ -775,6 +688,7 @@ C级客户标准：
             return pd.DataFrame(), str(e)
 
     def get_customer_health(self, last_follow_up_date):
+        """根据最后跟进日期判断健康度"""
         if not last_follow_up_date or (isinstance(last_follow_up_date, float) and pd.isna(last_follow_up_date)):
             return {'status': 'new', 'label': '新客户', 'icon': '🆕', 'color': '#6b7280'}
         try:
@@ -792,6 +706,7 @@ C级客户标准：
             return {'status': 'dormant', 'label': '沉睡', 'icon': '⚫', 'color': '#6b7280'}
 
     def get_global_activity_feed(self, limit=30):
+        """全局活动流：所有客户的最新动态"""
         try:
             conn = self.get_connection()
             df = pd.read_sql(f"""
@@ -799,16 +714,12 @@ C级客户标准：
                 FROM follow_up_timeline t
                 LEFT JOIN customers c ON t.customer_id = c.id
                 WHERE c.id IS NOT NULL
-                ORDER BY t.created_at DESC LIMIT %s
+                ORDER BY t.created_at DESC LIMIT ?
             """, conn, params=(limit,))
             conn.close()
             return df, None
         except Exception as e:
             return pd.DataFrame(), str(e)
-
-    # ==============================================================
-    # 产品匹配
-    # ==============================================================
 
     _PRODUCT_RULES = [
         ('阻燃面料（FR protective fabrics）', '⭐ 优先',
@@ -834,6 +745,7 @@ C级客户标准：
     ]
 
     def get_product_match(self, industry, products, notes=""):
+        """根据客户行业/产品推荐匹配产品线"""
         text = f"{industry or ''} {products or ''} {notes or ''}".lower()
         if not text.strip():
             return []
@@ -842,10 +754,6 @@ C级客户标准：
             if any(k in text for k in keywords):
                 results.append({'product': name, 'priority': priority})
         return results
-
-    # ==============================================================
-    # 时区建议
-    # ==============================================================
 
     _TIMEZONE_MAP = {
         'germany': ('UTC+1', 1, '15:30'), 'france': ('UTC+1', 1, '15:30'),
@@ -864,6 +772,7 @@ C级客户标准：
     }
 
     def get_timezone_advice(self, country):
+        """根据国家获取时区建议"""
         if not country:
             return None
         cl = country.lower().strip()
@@ -874,12 +783,9 @@ C级客户标准：
             return {'tz': 'UTC+1', 'cst_send': '15:30', 'label': country}
         return None
 
-    # ==============================================================
-    # SOP 跟进节奏
-    # ==============================================================
-
     @staticmethod
     def _add_working_days(from_date, days):
+        """增加工作日"""
         current = from_date
         added = 0
         while added < days:
@@ -889,6 +795,7 @@ C级客户标准：
         return current
 
     def calculate_next_follow_up(self, customer_id):
+        """根据SOP节奏计算下次跟进日期"""
         customer, err = self.get_customer(customer_id)
         if err or not customer:
             return None, err
@@ -922,7 +829,7 @@ C级客户标准：
             conn = self.get_connection()
             df = pd.read_sql("""
                 SELECT * FROM follow_up_timeline
-                WHERE customer_id = %s
+                WHERE customer_id = ?
                 ORDER BY created_at DESC
             """, conn, params=(customer_id,))
             conn.close()
@@ -930,27 +837,23 @@ C级客户标准：
         except Exception as e:
             return pd.DataFrame(), str(e)
 
-    # ==============================================================
-    # 邮件历史
-    # ==============================================================
-
     def add_email_history(self, customer_id, subject, content):
         try:
             conn = self.get_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT MAX(version) FROM email_history WHERE customer_id = %s", (customer_id,))
-            max_version = cursor.fetchone()[0] or 0
-            version = max_version + 1
+            cursor.execute("SELECT MAX(version) FROM email_history WHERE customer_id = ?", (customer_id,))
+            max_version = cursor.fetchone()[0]
+            version = (max_version or 0) + 1
             cursor.execute("""
                 INSERT INTO email_history (customer_id, version, email_subject, email_content)
-                VALUES (%s, %s, %s, %s)
+                VALUES (?, ?, ?, ?)
             """, (customer_id, version, subject, content))
             cursor.execute("""
                 INSERT INTO follow_up_timeline (customer_id, event_type, event_content)
-                VALUES (%s, %s, %s)
+                VALUES (?, ?, ?)
             """, (customer_id, "生成邮件", f"AI开发邮件 v{version} 已保存"))
             cursor.execute("""
-                UPDATE customers SET last_follow_up_date = %s WHERE id = %s
+                UPDATE customers SET last_follow_up_date = ? WHERE id = ?
             """, (datetime.now().strftime('%Y-%m-%d'), customer_id))
             conn.commit()
             conn.close()
@@ -959,22 +862,23 @@ C级客户标准：
             return None, str(e)
 
     def record_follow_up(self, customer_id, subject, content):
+        """记录跟进邮件到历史和时间轴"""
         try:
             conn = self.get_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT MAX(version) FROM email_history WHERE customer_id = %s", (customer_id,))
-            max_v = cursor.fetchone()[0] or 0
-            version = max_v + 1
+            cursor.execute("SELECT MAX(version) FROM email_history WHERE customer_id = ?", (customer_id,))
+            max_v = cursor.fetchone()[0]
+            version = (max_v or 0) + 1
             cursor.execute("""
                 INSERT INTO email_history (customer_id, version, email_subject, email_content)
-                VALUES (%s, %s, %s, %s)
+                VALUES (?, ?, ?, ?)
             """, (customer_id, version, subject, content))
             cursor.execute("""
                 INSERT INTO follow_up_timeline (customer_id, event_type, event_content)
-                VALUES (%s, %s, %s)
+                VALUES (?, ?, ?)
             """, (customer_id, "跟进邮件", f"跟进邮件 v{version} 已保存"))
             cursor.execute("""
-                UPDATE customers SET last_follow_up_date = %s WHERE id = %s
+                UPDATE customers SET last_follow_up_date = ? WHERE id = ?
             """, (datetime.now().strftime('%Y-%m-%d'), customer_id))
             conn.commit()
             conn.close()
@@ -987,7 +891,7 @@ C级客户标准：
             conn = self.get_connection()
             df = pd.read_sql("""
                 SELECT * FROM email_history
-                WHERE customer_id = %s
+                WHERE customer_id = ?
                 ORDER BY version DESC
             """, conn, params=(customer_id,))
             conn.close()
@@ -995,17 +899,13 @@ C级客户标准：
         except Exception as e:
             return pd.DataFrame(), str(e)
 
-    # ==============================================================
-    # 邮件模板
-    # ==============================================================
-
     def add_email_template(self, name, category, subject, content):
         try:
             conn = self.get_connection()
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO email_templates (name, category, subject, content)
-                VALUES (%s, %s, %s, %s)
+                VALUES (?, ?, ?, ?)
             """, (name, category, subject, content))
             conn.commit()
             conn.close()
@@ -1026,22 +926,18 @@ C级客户标准：
         try:
             conn = self.get_connection()
             cursor = conn.cursor()
-            cursor.execute("DELETE FROM email_templates WHERE id = %s", (template_id,))
+            cursor.execute("DELETE FROM email_templates WHERE id = ?", (template_id,))
             conn.commit()
             conn.close()
             return True, None
         except Exception as e:
             return False, str(e)
 
-    # ==============================================================
-    # 系统设置
-    # ==============================================================
-
     def get_setting(self, key):
         try:
             conn = self.get_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT setting_value FROM system_settings WHERE setting_key = %s", (key,))
+            cursor.execute("SELECT setting_value FROM system_settings WHERE setting_key = ?", (key,))
             result = cursor.fetchone()
             conn.close()
             return result['setting_value'] if result else ""
@@ -1053,20 +949,14 @@ C级客户标准：
             conn = self.get_connection()
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO system_settings (setting_key, setting_value, updated_at)
-                VALUES (%s, %s, NOW())
-                ON CONFLICT (setting_key)
-                DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = NOW()
-            """, (key, value))
+                INSERT OR REPLACE INTO system_settings (setting_key, setting_value, updated_at)
+                VALUES (?, ?, ?)
+            """, (key, value, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
             conn.commit()
             conn.close()
             return True, None
         except Exception as e:
             return False, str(e)
-
-    # ==============================================================
-    # 知识库
-    # ==============================================================
 
     def add_knowledge(self, category, title, content):
         try:
@@ -1074,7 +964,7 @@ C级客户标准：
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO knowledge_base (category, title, content)
-                VALUES (%s, %s, %s)
+                VALUES (?, ?, ?)
             """, (category, title, content))
             conn.commit()
             conn.close()
@@ -1091,11 +981,8 @@ C级客户标准：
         except Exception as e:
             return pd.DataFrame(), str(e)
 
-    # ==============================================================
-    # 数据备份与恢复
-    # ==============================================================
-
     def backup_data(self, backup_path):
+        """导出所有数据到Excel备份文件（每个表一个sheet）"""
         try:
             conn = self.get_connection()
             os.makedirs(os.path.dirname(backup_path) or '.', exist_ok=True)
@@ -1113,12 +1000,8 @@ C级客户标准：
                     df = pd.read_sql(query, conn)
                     if df.empty:
                         cursor = conn.cursor()
-                        cursor.execute("""
-                            SELECT column_name FROM information_schema.columns
-                            WHERE table_name = %s AND table_schema = 'public'
-                            ORDER BY ordinal_position
-                        """, (sheet_name,))
-                        columns = [row['column_name'] for row in cursor.fetchall()]
+                        cursor.execute(f"PRAGMA table_info({sheet_name})")
+                        columns = [row[1] for row in cursor.fetchall()]
                         pd.DataFrame(columns=columns).to_excel(writer, sheet_name=sheet_name, index=False)
                     else:
                         df.to_excel(writer, sheet_name=sheet_name, index=False)
@@ -1129,6 +1012,7 @@ C级客户标准：
             return False, str(e)
 
     def restore_data(self, backup_path):
+        """从Excel备份恢复所有数据（全量替换，多sheet）"""
         try:
             xls = pd.ExcelFile(backup_path, engine='openpyxl')
             required_sheets = {'customers', 'email_history', 'follow_up_timeline'}
@@ -1149,12 +1033,8 @@ C级客户标准：
                 return False, "备份文件中「客户」数据为空，无法恢复"
 
             def get_valid_columns(table_name):
-                cursor.execute("""
-                    SELECT column_name FROM information_schema.columns
-                    WHERE table_name = %s AND table_schema = 'public'
-                    ORDER BY ordinal_position
-                """, (table_name,))
-                return [row['column_name'] for row in cursor.fetchall()]
+                cursor.execute(f"PRAGMA table_info({table_name})")
+                return [row[1] for row in cursor.fetchall()]
 
             cust_valid = get_valid_columns('customers')
             email_valid = get_valid_columns('email_history')
@@ -1184,11 +1064,10 @@ C级客户标准：
                     key = d.get('setting_key')
                     value = d.get('setting_value')
                     if key:
-                        cursor.execute("""
-                            INSERT INTO system_settings (setting_key, setting_value)
-                            VALUES (%s, %s)
-                            ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value
-                        """, (key, value))
+                        cursor.execute(
+                            "INSERT OR REPLACE INTO system_settings (setting_key, setting_value) VALUES (?, ?)",
+                            (key, value)
+                        )
 
             if not templates_df.empty:
                 for _, row in templates_df.iterrows():
@@ -1196,10 +1075,10 @@ C级客户标准：
                     name = d.get('name')
                     if not name:
                         continue
-                    cursor.execute("""
-                        INSERT INTO email_templates (name, category, subject, content)
-                        VALUES (%s, %s, %s, %s)
-                    """, (name, d.get('category'), d.get('subject'), d.get('content')))
+                    cursor.execute(
+                        "INSERT INTO email_templates (name, category, subject, content) VALUES (?, ?, ?, ?)",
+                        (name, d.get('category'), d.get('subject'), d.get('content'))
+                    )
 
             restored_count = 0
             for _, row in customers_df.iterrows():
@@ -1208,7 +1087,7 @@ C级客户标准：
                     continue
                 fields = [f for f in cust_valid if f in d]
                 values = [d[f] for f in fields]
-                placeholders = ', '.join(['%s' for _ in fields])
+                placeholders = ', '.join(['?' for _ in fields])
                 cursor.execute(
                     f"INSERT INTO customers ({', '.join(fields)}) VALUES ({placeholders})",
                     values
@@ -1222,10 +1101,10 @@ C级客户标准：
                     etype = d.get('event_type')
                     if cid is None or not etype:
                         continue
-                    cursor.execute("""
-                        INSERT INTO follow_up_timeline (customer_id, event_type, event_content)
-                        VALUES (%s, %s, %s)
-                    """, (cid, etype, d.get('event_content')))
+                    cursor.execute(
+                        "INSERT INTO follow_up_timeline (customer_id, event_type, event_content) VALUES (?, ?, ?)",
+                        (cid, etype, d.get('event_content'))
+                    )
 
             if not email_history_df.empty:
                 for _, row in email_history_df.iterrows():
@@ -1233,10 +1112,10 @@ C级客户标准：
                     cid = d.get('customer_id')
                     if cid is None:
                         continue
-                    cursor.execute("""
-                        INSERT INTO email_history (customer_id, version, email_subject, email_content)
-                        VALUES (%s, %s, %s, %s)
-                    """, (cid, d.get('version', 1), d.get('email_subject'), d.get('email_content')))
+                    cursor.execute(
+                        "INSERT INTO email_history (customer_id, version, email_subject, email_content) VALUES (?, ?, ?, ?)",
+                        (cid, d.get('version', 1), d.get('email_subject'), d.get('email_content'))
+                    )
 
             conn.commit()
             conn.close()

@@ -290,9 +290,10 @@ def _render_backup_section():
         files.sort(reverse=True)
         return files[:3]
 
-    bc1, bc2 = st.columns(2)
+    st.caption("💡 重启前记得下载备份，重启后上传恢复即可")
+    bc1, bc2, bc3 = st.columns(3)
     with bc1:
-        st.caption("备份全部数据：客户、邮件历史、跟进记录、模板、系统设置")
+        st.caption("备份到服务器（临时）")
         if st.button("📀 手动全量备份", type="primary", use_container_width=True):
             now = datetime.now()
             fname = f"客户备份_{now.strftime('%Y%m%d_%H%M')}.xlsx"
@@ -312,33 +313,33 @@ def _render_backup_section():
                 st.error(f"❌ 备份失败：{err}")
 
     with bc2:
+        st.caption("下载备份到本地电脑")
         backups = _list_backups()
         if backups:
-            bnames = [os.path.basename(f) for f in backups]
-            st.selectbox("选择备份文件恢复", bnames, key="restore_select")
-
-            if st.button("🔄 恢复数据", use_container_width=True):
-                st.session_state['confirm_restore'] = True
-
-            if st.session_state.get('confirm_restore', False):
-                st.warning("⚠️ 恢复操作将覆盖当前所有客户数据，此操作不可撤销！请谨慎操作。")
-                r1, r2 = st.columns(2)
-                with r1:
-                    if st.button("✅ 确认恢复", key="confirm_restore_btn"):
-                        sel = st.session_state['restore_select']
-                        ok, msg = db.restore_data(os.path.join(_backup_dir, sel))
-                        if ok:
-                            st.success(f"✅ {msg}")
-                        else:
-                            st.error(f"❌ {msg}")
-                            remaining = [b for b in bnames if b != sel]
-                            if remaining:
-                                st.info(f"💡 可尝试选择其他备份：{'、'.join(remaining)}")
-                        st.session_state['confirm_restore'] = False
-                        st.rerun()
-                with r2:
-                    if st.button("❌ 取消", key="cancel_restore_btn"):
-                        st.session_state['confirm_restore'] = False
-                        st.rerun()
+            sel = st.selectbox("选择要下载的备份", [os.path.basename(f) for f in backups], key="dl_backup")
+            fpath = os.path.join(_backup_dir, sel)
+            with open(fpath, "rb") as f:
+                st.download_button(
+                    label="⬇️ 下载到电脑",
+                    data=f,
+                    file_name=sel,
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True,
+                )
         else:
-            st.info("暂无备份文件，请先点击左侧按钮进行备份")
+            st.info("请先点左侧按钮创建备份")
+
+    with bc3:
+        st.caption("从本地电脑恢复")
+        uploaded = st.file_uploader("选择备份文件上传恢复", type=['xlsx'], key="restore_upload")
+        if uploaded:
+            tmp_path = os.path.join(_backup_dir, "_upload_restore.xlsx")
+            with open(tmp_path, "wb") as f:
+                f.write(uploaded.getbuffer())
+            if st.button("🔄 恢复数据", type="primary", use_container_width=True):
+                ok, msg = db.restore_data(tmp_path)
+                if ok:
+                    st.success(f"✅ {msg}")
+                else:
+                    st.error(f"❌ {msg}")
+                st.rerun()
