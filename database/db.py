@@ -8,11 +8,38 @@ import psycopg2.extras
 
 class Database:
     def __init__(self):
-        self.init_database()
+        self._ready = False
+        self._init_error = None
+
+    def _ensure_ready(self):
+        """延迟初始化：第一次调用数据库方法时才建表"""
+        if self._ready:
+            return
+        if self._init_error:
+            raise Exception(self._init_error)
+        try:
+            self.init_database()
+            self._ready = True
+        except Exception as e:
+            self._init_error = str(e)
+            raise
 
     # ==============================================================
     # 数据库连接（Supabase PostgreSQL）
     # ==============================================================
+
+    def _ensure_ready(self):
+        """延迟初始化：第一次调用数据库方法时才建表"""
+        if self._ready:
+            return
+        if self._init_error:
+            raise Exception(self._init_error)
+        try:
+            self.init_database()
+            self._ready = True
+        except Exception as e:
+            self._init_error = str(e)
+            raise
 
     def _get_config(self):
         """从 Streamlit secrets 或环境变量获取 Supabase 配置"""
@@ -32,7 +59,8 @@ class Database:
             cfg['password'] = os.environ.get("SUPABASE_PASSWORD", "")
         return cfg
 
-    def get_connection(self):
+    def _connect(self):
+        """内部：直接创建连接（不触发 init，避免递归）"""
         cfg = self._get_config()
         if not cfg['host'] or not cfg['password']:
             raise Exception(
@@ -55,13 +83,18 @@ class Database:
         except Exception as e:
             raise Exception(f"数据库连接失败：{str(e)}")
 
+    def get_connection(self):
+        """对外：获取连接前确保表已建好"""
+        self._ensure_ready()
+        return self._connect()
+
     # ==============================================================
     # 初始化建表
     # ==============================================================
 
     def init_database(self):
         try:
-            conn = self.get_connection()
+            conn = self._connect()
             cursor = conn.cursor()
 
             cursor.execute("""
