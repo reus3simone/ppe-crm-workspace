@@ -368,7 +368,7 @@ C级客户标准：
             customer_data['auto_score'] = score
             # 表格里手动标注的等级优先，不覆盖；未标才自动评分
             manual_grade = customer_data.get('customer_grade', '').strip()
-            if not manual_grade:
+            if manual_grade not in ('A', 'B', 'C'):
                 customer_data['customer_grade'] = self._get_customer_grade_by_score(score)
             customer_data['last_follow_up_date'] = datetime.now().strftime('%Y-%m-%d')
             customer_data.setdefault('assigned_to', 'Elsa')
@@ -558,8 +558,9 @@ C级客户标准：
                 merged = {**existing, **customer_data}
                 score = self._calculate_auto_score(merged)
                 customer_data['auto_score'] = score
-                # 保留手动等级，不覆盖；仅当没传等级时才自动评分
-                if not customer_data.get('customer_grade', '').strip():
+                # 只保留 A/B/C 有效等级，空值或非法值则自动评分
+                grade_val = customer_data.get('customer_grade', '').strip()
+                if grade_val not in ('A', 'B', 'C'):
                     customer_data['customer_grade'] = self._get_customer_grade_by_score(score)
 
             customer_data['updated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -795,7 +796,7 @@ C级客户标准：
         if err or not customer:
             return None, err
         tl_df, _ = self.get_customer_timeline(customer_id)
-        email_events = tl_df[tl_df['event_type'] == '生成邮件'] if not tl_df.empty else pd.DataFrame()
+        email_events = tl_df[tl_df['event_type'].isin(['生成邮件', '跟进邮件'])] if not tl_df.empty else pd.DataFrame()
         email_count = len(email_events)
         today = datetime.now().date()
         last_contact = today

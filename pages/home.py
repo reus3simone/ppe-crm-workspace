@@ -272,7 +272,7 @@ def _render_quick_actions():
             st.rerun()
     with c2:
         if st.button("📧 跟进邮件工坊", use_container_width=True):
-            st.session_state['current_page'] = "AI邮件生成"
+            st.session_state['current_page'] = "跟进邮件工坊"
             st.rerun()
     with c3:
         if st.button("🔍 客户背景研究", use_container_width=True):

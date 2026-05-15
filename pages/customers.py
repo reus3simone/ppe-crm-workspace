@@ -377,7 +377,7 @@ def render_customer_detail():
     with col2:
         if st.button("🤖 AI生成开发信"):
             st.session_state['ai_email_customer'] = cid
-            st.session_state['current_page'] = "AI邮件生成"
+            st.session_state['current_page'] = "跟进邮件工坊"
             st.rerun()
     with col3:
         if st.button("🔍 客户背景调研"):
