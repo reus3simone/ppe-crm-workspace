@@ -406,6 +406,14 @@ C级客户标准：
                 or '已发' in dev_status and '邮件' in dev_status
             )
             if is_sent:
+                cursor.execute("""
+                    INSERT INTO follow_up_timeline (customer_id, event_type, event_content)
+                    VALUES (?, ?, ?)
+                """, (customer_id, "生成邮件",
+                      f"导入标记：客户在表格中已标注为「{dev_status}」，跳过首轮开发"))
+                cursor.execute("""
+                    UPDATE customers SET last_follow_up_date = ? WHERE id = ?
+                """, (datetime.now().strftime('%Y-%m-%d'), customer_id))
 
             cursor.execute("""
                 INSERT INTO follow_up_timeline (customer_id, event_type, event_content)
