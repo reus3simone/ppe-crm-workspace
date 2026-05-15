@@ -1,5 +1,6 @@
 import sqlite3
 import re
+import os
 import pandas as pd
 from datetime import datetime, timedelta
 
@@ -762,3 +763,87 @@ C级客户标准：
             return df, None
         except Exception as e:
             return pd.DataFrame(), str(e)
+
+    def backup_data(self, backup_path):
+        """导出所有客户数据到Excel备份文件"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("PRAGMA table_info(customers)")
+            columns = [row[1] for row in cursor.fetchall()]
+            df = pd.read_sql("SELECT * FROM customers ORDER BY id", conn)
+            conn.close()
+
+            os.makedirs(os.path.dirname(backup_path) or '.', exist_ok=True)
+
+            if df is not None and not df.empty:
+                df.to_excel(backup_path, index=False, engine='openpyxl')
+            else:
+                pd.DataFrame(columns=columns).to_excel(backup_path, index=False, engine='openpyxl')
+
+            return True, None
+        except Exception as e:
+            return False, str(e)
+
+    def restore_data(self, backup_path):
+        """从Excel备份文件恢复数据（全量替换）"""
+        try:
+            try:
+                df = pd.read_excel(backup_path, engine='openpyxl')
+            except Exception as e:
+                return False, f"备份文件读取失败，该文件可能已损坏：{str(e)}"
+
+            if df.empty:
+                return False, "备份文件为空，无法恢复"
+
+            if 'company_name' not in df.columns:
+                return False, "备份文件格式无效：缺少「公司名称」列"
+
+            conn = self.get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute("PRAGMA table_info(customers)")
+            valid_columns = [row[1] for row in cursor.fetchall()]
+
+            cursor.execute("DELETE FROM email_history")
+            cursor.execute("DELETE FROM follow_up_timeline")
+            cursor.execute("DELETE FROM customers")
+
+            restored_count = 0
+            for _, row in df.iterrows():
+                data = {}
+                for col in valid_columns:
+                    if col in row.index:
+                        v = row[col]
+                        data[col] = None if pd.isna(v) else (v.item() if hasattr(v, 'item') else v)
+                    else:
+                        data[col] = None
+
+                if not str(data.get('company_name', '') or '').strip():
+                    continue
+
+                fields = [f for f in valid_columns if f in data]
+                values = [data[f] for f in fields]
+                placeholders = ', '.join(['?' for _ in fields])
+
+                cursor.execute(
+                    f"INSERT INTO customers ({', '.join(fields)}) VALUES ({placeholders})",
+                    values
+                )
+                cursor.execute(
+                    "INSERT INTO follow_up_timeline (customer_id, event_type, event_content) VALUES (?, ?, ?)",
+                    (cursor.lastrowid, "系统恢复", f"从备份文件恢复数据")
+                )
+                restored_count += 1
+
+            conn.commit()
+            conn.close()
+            self._init_all_auto_scores()
+            return True, f"恢复完成，共恢复 {restored_count} 条客户记录"
+        except Exception as e:
+            try:
+                conn.rollback()
+                conn.close()
+            except Exception:
+                pass
+            return False, f"恢复失败：{str(e)}"

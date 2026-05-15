@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import os
+import glob
 from datetime import datetime, date
 from database.db import Database
 
@@ -137,3 +139,69 @@ def render_home_page():
         if st.button("🔍 客户背景研究", use_container_width=True):
             st.session_state['current_page'] = "客户背景研究"
             st.rerun()
+
+    # ===== 数据备份与恢复 =====
+    st.markdown("---")
+    st.subheader("💾 数据备份与恢复")
+
+    _base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    _backup_dir = os.path.join(_base_dir, "assets")
+    os.makedirs(_backup_dir, exist_ok=True)
+
+    def _list_backups():
+        files = glob.glob(os.path.join(_backup_dir, "客户备份_*.xlsx"))
+        files.sort(reverse=True)
+        return files[:3]
+
+    bc1, bc2 = st.columns(2)
+    with bc1:
+        st.caption("定期备份客户数据，防止意外丢失")
+        if st.button("📀 手动备份数据", type="primary", use_container_width=True):
+            now = datetime.now()
+            fname = f"客户备份_{now.strftime('%Y%m%d_%H%M')}.xlsx"
+            fpath = os.path.join(_backup_dir, fname)
+            ok, err = db.backup_data(fpath)
+            if ok:
+                st.success(f"✅ 备份成功：{fname}")
+                all_bk = sorted(glob.glob(os.path.join(_backup_dir, "客户备份_*.xlsx")), reverse=True)
+                for f in all_bk[3:]:
+                    try:
+                        os.remove(f)
+                    except Exception:
+                        pass
+                st.info("已自动清理旧备份，保留最新 3 个")
+                st.rerun()
+            else:
+                st.error(f"❌ 备份失败：{err}")
+
+    with bc2:
+        backups = _list_backups()
+        if backups:
+            bnames = [os.path.basename(f) for f in backups]
+            st.selectbox("选择备份文件恢复", bnames, key="restore_select")
+
+            if st.button("🔄 恢复数据", use_container_width=True):
+                st.session_state['confirm_restore'] = True
+
+            if st.session_state.get('confirm_restore', False):
+                st.warning("⚠️ 恢复操作将覆盖当前所有客户数据，此操作不可撤销！请谨慎操作。")
+                r1, r2 = st.columns(2)
+                with r1:
+                    if st.button("✅ 确认恢复", key="confirm_restore_btn"):
+                        sel = st.session_state['restore_select']
+                        ok, msg = db.restore_data(os.path.join(_backup_dir, sel))
+                        if ok:
+                            st.success(f"✅ {msg}")
+                        else:
+                            st.error(f"❌ {msg}")
+                            remaining = [b for b in bnames if b != sel]
+                            if remaining:
+                                st.info(f"💡 可尝试选择其他备份：{'、'.join(remaining)}")
+                        st.session_state['confirm_restore'] = False
+                        st.rerun()
+                with r2:
+                    if st.button("❌ 取消", key="cancel_restore_btn"):
+                        st.session_state['confirm_restore'] = False
+                        st.rerun()
+        else:
+            st.info("暂无备份文件，请先点击左侧按钮进行备份")
