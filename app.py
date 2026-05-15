@@ -59,6 +59,9 @@ if 'ai_email_customer' not in st.session_state:
 if 'research_customer' not in st.session_state:
     st.session_state['research_customer'] = None
 
+if 'confirm_restore' not in st.session_state:
+    st.session_state['confirm_restore'] = False
+
 # 侧边栏导航
 with st.sidebar:
     st.markdown("""

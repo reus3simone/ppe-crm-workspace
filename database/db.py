@@ -1,4 +1,6 @@
 import sqlite3
+import re
+import os
 import pandas as pd
 from datetime import datetime, timedelta
 
@@ -125,14 +127,17 @@ class Database:
             default_settings = {
                 'company_intro': """KEYSTONE is the international brand of Jiangsu Kexu Textile Technology Co., Ltd. (est. 2000, Changzhou, China). 
 We engineer staple-fiber protective yarns and fabrics for industrial PPE—cut resistance, FR / heat protection, and arc-related protective textiles—with in-house yarn spinning and fabric engineering capabilities.""",
-                'ai_email_prompt': """常州科旭纺织开发信核心规则：
+                'ai_email_prompt': """常州科旭纺织开发信核心规则（SOP V3）：
 1. 第一封唯一目标：不被删 + 专业感 + 同行感
 2. 正文≤5行，短、克制、纯文本
 3. 只讲1个观察点或1个痛点
 4. 低压力收尾，给客户退路
 5. 禁用套话：We are a professional manufacturer...
 6. 禁用：Best price、Leading supplier
-7. 第一封无附件、无链接、无PDF""",
+7. 第一封无附件、无链接、无PDF
+8. 标题像同事往来，含客户业务关键词
+9. 发送纪律：当地工作日09:30-10:30，周二至周四优先，每天≤20封，间隔≥5分钟
+10. 禁用：offer/discount/supplier/best price在标题中""",
                 'customer_grade_rules': """A级客户标准：
 - 有明确的PPE/防护产品线
 - 有欧洲/北美市场
@@ -219,8 +224,15 @@ C级客户标准：
             for _, row in df.iterrows():
                 row_dict = dict(row)
                 score = self._calculate_auto_score(row_dict)
-                grade = self._get_customer_grade_by_score(score)
-                conn.execute("UPDATE customers SET auto_score = ?, customer_grade = ? WHERE id = ?", (score, grade, row['id']))
+                existing_grade = str(row_dict.get('customer_grade', '')).strip()
+                # 保留手动标注的等级，不覆盖
+                if existing_grade and existing_grade not in ('A', 'B', 'C', ''):
+                    conn.execute("UPDATE customers SET auto_score = ? WHERE id = ?", (score, row['id']))
+                elif not existing_grade or existing_grade in ('A', 'B', 'C'):
+                    grade = self._get_customer_grade_by_score(score)
+                    conn.execute("UPDATE customers SET auto_score = ?, customer_grade = ? WHERE id = ?", (score, grade, row['id']))
+                else:
+                    conn.execute("UPDATE customers SET auto_score = ? WHERE id = ?", (score, row['id']))
             conn.commit()
             conn.close()
         except Exception:
@@ -346,16 +358,21 @@ C级客户标准：
                 return None, conflicts[0]['message']
             
             fixed_fields = [
-                'company_name', 'contact_person', 'email', 'phone', 'whatsapp', 
-                'country', 'website', 'linkedin', 'industry', 'products', 
-                'source', 'development_status', 'notes', 'auto_score', 
-                'customer_grade', 'last_follow_up_date'
+                'company_name', 'contact_person', 'email', 'phone', 'whatsapp',
+                'country', 'website', 'linkedin', 'industry', 'products',
+                'source', 'development_status', 'notes', 'auto_score',
+                'customer_grade', 'last_follow_up_date', 'assigned_to', 'status'
             ]
-            
+
             score = self._calculate_auto_score(customer_data)
             customer_data['auto_score'] = score
-            customer_data['customer_grade'] = self._get_customer_grade_by_score(score)
+            # 表格里手动标注的等级优先，不覆盖；未标才自动评分
+            manual_grade = customer_data.get('customer_grade', '').strip()
+            if not manual_grade:
+                customer_data['customer_grade'] = self._get_customer_grade_by_score(score)
             customer_data['last_follow_up_date'] = datetime.now().strftime('%Y-%m-%d')
+            customer_data.setdefault('assigned_to', 'Elsa')
+            customer_data.setdefault('status', '正在跟进')
 
             clean_data = {k: customer_data.get(k, '') for k in fixed_fields}
 
@@ -387,6 +404,146 @@ C级客户标准：
         except Exception as e:
             return None, str(e)
 
+    def _parse_contacts(self, raw_text):
+        """从联系方式字段中提取邮箱、电话、联系人姓名，返回 (email, phone, contact_person)"""
+        email, phone, person = '', '', ''
+        if not raw_text or not str(raw_text).strip():
+            return email, phone, person
+        text = str(raw_text).strip()
+
+        # 提取邮箱
+        email_match = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', text)
+        if email_match:
+            email = email_match.group(0).strip()
+
+        # 提取电话号码
+        phone_match = re.search(r'(?:(?:Tel|电话|Phone)[.:]*\s*)?(\+?\d{1,4}[\s-]?\d{2,5}[\s-]?\d{3,5}[\s-]?\d{2,4}(?:[\s-]?\d{2,5})?)', text)
+        if phone_match:
+            phone = phone_match.group(1).strip()
+
+        # 提取联系人姓名
+        # 支持含特殊字符的西方人名（Ö, ü, é, ñ 等，首字母也支持）
+        name_char = r'[A-ZÀ-ɏ][-a-zA-ZÀ-ɏ]+'
+
+        m1 = re.search(r'(?:Mr\.?|Ms\.?|Mrs\.?)\s+(' + name_char + r'(?:\s+' + name_char + r'){1,2})', text)
+        if m1:
+            person = m1.group(1).strip()
+        else:
+            m2 = re.search(r'(' + name_char + r'\s+' + name_char + r')\s*[|（(]', text)
+            if m2:
+                candidate = m2.group(1).strip()
+                if candidate.lower() not in ('purchasing department', 'managing director',
+                    'director marketing', 'technical director', 'general manager',
+                    'import department', 'sales department', 'all rights', 'sungin tex'):
+                    person = candidate
+            if not person:
+                m3 = re.search(r'(' + name_char + r'(?:\s+' + name_char + r'){1,2})', text)
+                if m3:
+                    candidate = m3.group(1).strip()
+                    if candidate.lower() not in ('purchasing department', 'managing director',
+                        'director marketing', 'technical director', 'general manager',
+                        'import department', 'sales department', 'sungin tex',
+                        'edk vina', 'company limited', 'all rights'):
+                        person = candidate
+
+        # 排除通用词
+        stop_words = {'info', 'sales', 'marketing', 'procurement', 'import', 'sekretariat',
+                      'admin', 'office', 'export', 'contact', 'purchasing', 'managing',
+                      'director', 'general', 'technical', 'sungin', 'all rights'}
+        if person.lower() in stop_words:
+            person = ''
+
+        # 清理不可打印字符、换行符、多余空格
+        def clean(s):
+            s = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', s)
+            s = s.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
+            return re.sub(r'\s+', ' ', s).strip()
+
+        return clean(email), clean(phone), clean(person)
+
+    def batch_import_customers(self, df):
+        """批量导入客户，自动识别表格字段映射。返回 (成功数, 重复数, 失败数, 错误信息)"""
+        # 字段映射：Excel列名 → CRM字段名
+        col_map = {
+            '公司': 'company_name', '公司名称': 'company_name',
+            '国家': 'country',
+            '公司定位': 'industry',
+            '业务对接': 'products',
+            '联系方式': '_contacts_raw',
+            '开发进度': 'development_status',
+            '客户意向': 'customer_grade',
+            '客户等级': 'customer_grade',
+            '备注': 'notes',
+        }
+
+        # 如果列名直接匹配CRM字段（兼容旧格式）
+        direct_fields = ['company_name', 'contact_person', 'email', 'phone', 'country',
+                         'linkedin', 'website', 'products', 'notes', 'customer_grade',
+                         'status', 'whatsapp', 'industry', 'development_status', 'source']
+
+        success_count = 0
+        duplicate_count = 0
+        error_count = 0
+        first_error = None
+
+        def clean_text(val):
+            """清理文本：去换行符、控制字符、多余空格"""
+            if not val:
+                return ''
+            s = str(val)
+            s = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', s)
+            s = s.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
+            return re.sub(r'\s+', ' ', s).strip()
+
+        for _, row in df.iterrows():
+            data = {}
+            has_mapped = False
+
+            # 尝试用映射表匹配
+            for excel_col, crm_field in col_map.items():
+                if excel_col in df.columns and pd.notna(row[excel_col]):
+                    raw_val = clean_text(row[excel_col])
+                    if crm_field == '_contacts_raw':
+                        email, phone, person = self._parse_contacts(raw_val)
+                        data['email'] = email
+                        data['phone'] = phone
+                        if person:
+                            data['contact_person'] = person
+                        has_mapped = True
+                    elif crm_field == 'notes':
+                        if not raw_val.startswith('=DISPIMG'):
+                            data[crm_field] = raw_val
+                        has_mapped = True
+                    else:
+                        data[crm_field] = raw_val
+                        has_mapped = True
+
+            # 如果映射没匹配到，尝试直接列名匹配（兼容旧格式）
+            if not has_mapped:
+                for field in direct_fields:
+                    if field in df.columns and pd.notna(row[field]):
+                        data[field] = str(row[field]).strip()
+
+            # 跳过明显非公司名的行（如"2026/5/9日开发完第一轮"这种分隔行）
+            company = data.get('company_name', '')
+            if not company or any(kw in company for kw in ['日开发完', '开发完第', '------', '=====', '小计']):
+                continue
+
+            # 设置默认值
+            data.setdefault('development_status', '初次开发')
+            data.setdefault('status', '正在跟进')
+
+            cid, result = self.add_customer(data)
+            if cid:
+                success_count += 1
+            elif result and isinstance(result, str) and '重复' in result:
+                duplicate_count += 1
+            else:
+                error_count += 1
+                if first_error is None and isinstance(result, str):
+                    first_error = result
+        return success_count, duplicate_count, error_count, first_error
+
     def update_customer(self, customer_id, customer_data, current_user='Elsa'):
         try:
             can_edit, msg = self.check_customer_protection(customer_id, current_user)
@@ -401,7 +558,9 @@ C级客户标准：
                 merged = {**existing, **customer_data}
                 score = self._calculate_auto_score(merged)
                 customer_data['auto_score'] = score
-                customer_data['customer_grade'] = self._get_customer_grade_by_score(score)
+                # 保留手动等级，不覆盖；仅当没传等级时才自动评分
+                if not customer_data.get('customer_grade', '').strip():
+                    customer_data['customer_grade'] = self._get_customer_grade_by_score(score)
 
             customer_data['updated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             conn = self.get_connection()
@@ -604,3 +763,87 @@ C级客户标准：
             return df, None
         except Exception as e:
             return pd.DataFrame(), str(e)
+
+    def backup_data(self, backup_path):
+        """导出所有客户数据到Excel备份文件"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("PRAGMA table_info(customers)")
+            columns = [row[1] for row in cursor.fetchall()]
+            df = pd.read_sql("SELECT * FROM customers ORDER BY id", conn)
+            conn.close()
+
+            os.makedirs(os.path.dirname(backup_path) or '.', exist_ok=True)
+
+            if df is not None and not df.empty:
+                df.to_excel(backup_path, index=False, engine='openpyxl')
+            else:
+                pd.DataFrame(columns=columns).to_excel(backup_path, index=False, engine='openpyxl')
+
+            return True, None
+        except Exception as e:
+            return False, str(e)
+
+    def restore_data(self, backup_path):
+        """从Excel备份文件恢复数据（全量替换）"""
+        try:
+            try:
+                df = pd.read_excel(backup_path, engine='openpyxl')
+            except Exception as e:
+                return False, f"备份文件读取失败，该文件可能已损坏：{str(e)}"
+
+            if df.empty:
+                return False, "备份文件为空，无法恢复"
+
+            if 'company_name' not in df.columns:
+                return False, "备份文件格式无效：缺少「公司名称」列"
+
+            conn = self.get_connection()
+            cursor = conn.cursor()
+
+            cursor.execute("PRAGMA table_info(customers)")
+            valid_columns = [row[1] for row in cursor.fetchall()]
+
+            cursor.execute("DELETE FROM email_history")
+            cursor.execute("DELETE FROM follow_up_timeline")
+            cursor.execute("DELETE FROM customers")
+
+            restored_count = 0
+            for _, row in df.iterrows():
+                data = {}
+                for col in valid_columns:
+                    if col in row.index:
+                        v = row[col]
+                        data[col] = None if pd.isna(v) else (v.item() if hasattr(v, 'item') else v)
+                    else:
+                        data[col] = None
+
+                if not str(data.get('company_name', '') or '').strip():
+                    continue
+
+                fields = [f for f in valid_columns if f in data]
+                values = [data[f] for f in fields]
+                placeholders = ', '.join(['?' for _ in fields])
+
+                cursor.execute(
+                    f"INSERT INTO customers ({', '.join(fields)}) VALUES ({placeholders})",
+                    values
+                )
+                cursor.execute(
+                    "INSERT INTO follow_up_timeline (customer_id, event_type, event_content) VALUES (?, ?, ?)",
+                    (cursor.lastrowid, "系统恢复", f"从备份文件恢复数据")
+                )
+                restored_count += 1
+
+            conn.commit()
+            conn.close()
+            self._init_all_auto_scores()
+            return True, f"恢复完成，共恢复 {restored_count} 条客户记录"
+        except Exception as e:
+            try:
+                conn.rollback()
+                conn.close()
+            except Exception:
+                pass
+            return False, f"恢复失败：{str(e)}"
