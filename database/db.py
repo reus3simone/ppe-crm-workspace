@@ -632,6 +632,193 @@ C级客户标准：
         except Exception as e:
             return False, str(e)
 
+    # ===== 新功能：跟进统计与健康度 =====
+
+    def get_customer_follow_up_stats(self, customer_id):
+        """获取客户跟进统计"""
+        try:
+            tl_df, _ = self.get_customer_timeline(customer_id)
+            total = len(tl_df)
+            email_count = len(tl_df[tl_df['event_type'] == '生成邮件']) if not tl_df.empty else 0
+            research_count = len(tl_df[tl_df['event_type'] == '背调完成']) if not tl_df.empty else 0
+            last_contact = None
+            if not tl_df.empty:
+                try:
+                    last_contact = pd.to_datetime(tl_df.iloc[0]['created_at'])
+                except Exception:
+                    pass
+            fc = tl_df[tl_df['event_type'] == '跟进邮件'].shape[0] if not tl_df.empty else 0
+            return {
+                'total_events': total, 'email_count': email_count,
+                'research_count': research_count, 'follow_up_count': fc,
+                'last_contact': last_contact,
+            }, None
+        except Exception as e:
+            return None, str(e)
+
+    def get_all_customers_with_stats(self):
+        """获取所有客户并附带跟进次数和最后活动时间"""
+        try:
+            conn = self.get_connection()
+            df = pd.read_sql("SELECT * FROM customers ORDER BY created_at DESC", conn)
+            if df.empty:
+                conn.close()
+                return df, None
+            stats_df = pd.read_sql("""
+                SELECT customer_id, COUNT(*) as event_count,
+                       MAX(created_at) as last_event_time
+                FROM follow_up_timeline GROUP BY customer_id
+            """, conn)
+            conn.close()
+            df = df.merge(stats_df, left_on='id', right_on='customer_id', how='left')
+            df['event_count'] = df['event_count'].fillna(0).astype(int)
+            return df, None
+        except Exception as e:
+            return pd.DataFrame(), str(e)
+
+    def get_customer_health(self, last_follow_up_date):
+        """根据最后跟进日期判断健康度"""
+        if not last_follow_up_date or (isinstance(last_follow_up_date, float) and pd.isna(last_follow_up_date)):
+            return {'status': 'new', 'label': '新客户', 'icon': '🆕', 'color': '#6b7280'}
+        try:
+            last = pd.to_datetime(last_follow_up_date).date()
+            days = (datetime.now().date() - last).days
+        except Exception:
+            return {'status': 'unknown', 'label': '未知', 'icon': '❓', 'color': '#6b7280'}
+        if days <= 7:
+            return {'status': 'active', 'label': '活跃', 'icon': '🟢', 'color': '#22c55e'}
+        elif days <= 14:
+            return {'status': 'cooling', 'label': '变凉', 'icon': '🟡', 'color': '#eab308'}
+        elif days <= 60:
+            return {'status': 'danger', 'label': '危险', 'icon': '🔴', 'color': '#ef4444'}
+        else:
+            return {'status': 'dormant', 'label': '沉睡', 'icon': '⚫', 'color': '#6b7280'}
+
+    def get_global_activity_feed(self, limit=30):
+        """全局活动流：所有客户的最新动态"""
+        try:
+            conn = self.get_connection()
+            df = pd.read_sql(f"""
+                SELECT t.*, c.company_name, c.country, c.customer_grade
+                FROM follow_up_timeline t
+                LEFT JOIN customers c ON t.customer_id = c.id
+                WHERE c.id IS NOT NULL
+                ORDER BY t.created_at DESC LIMIT ?
+            """, conn, params=(limit,))
+            conn.close()
+            return df, None
+        except Exception as e:
+            return pd.DataFrame(), str(e)
+
+    # ===== 新功能：产品匹配建议 =====
+
+    _PRODUCT_RULES = [
+        ('阻燃面料（FR protective fabrics）', '⭐ 优先',
+         ['fr', '阻燃', 'flame', 'fire retardant', 'nfpa 2112', 'en iso 11612',
+          'arc flash', '电弧', '焊接', 'welding', 'en iso 11611', '工装',
+          'workwear', 'firefighter', '消防', '防护服']),
+        ('防切割面料（Cut-resistant fabrics）', '⭐ 优先',
+         ['cut resistant fabric', '防切割面料', '防割面料', 'en388',
+          'ansi cut', 'protective fabric', '防护面料']),
+        ('防切割纱线（Cut-resistant yarns）', '⭐ 优先',
+         ['cut resistant yarn', '防切割纱线', 'hppe yarn', '芳纶纱',
+          '针织纱', '手套纱', 'knitting yarn', 'glove yarn']),
+        ('阻燃耐高温纱线（FR / aramid yarns）', '高',
+         ['fr yarn', '阻燃纱线', '耐高温纱线', 'heat resistant yarn',
+          '芳纶', 'aramid', 'meta-aramid', '预氧丝', 'panox']),
+        ('防切割手套（Cut-resistant gloves）', '中',
+         ['手套', 'glove', 'hand protection', '护具', 'knitted glove',
+          '机械防护', '作业防护']),
+        ('防割袖套（Cut-resistant sleeves）', '中',
+         ['袖套', 'sleeve', 'arm protection', '手臂防护']),
+        ('防割服（Cut-resistant clothing）', '中',
+         ['防护服', 'protective clothing', 'coverall', '工装', '安全服']),
+    ]
+
+    def get_product_match(self, industry, products, notes=""):
+        """根据客户行业/产品推荐匹配产品线"""
+        text = f"{industry or ''} {products or ''} {notes or ''}".lower()
+        if not text.strip():
+            return []
+        results = []
+        for name, priority, keywords in self._PRODUCT_RULES:
+            if any(k in text for k in keywords):
+                results.append({'product': name, 'priority': priority})
+        return results
+
+    # ===== 新功能：时区建议 =====
+
+    _TIMEZONE_MAP = {
+        'germany': ('UTC+1', 1, '15:30'), 'france': ('UTC+1', 1, '15:30'),
+        'italy': ('UTC+1', 1, '15:30'), 'spain': ('UTC+1', 1, '15:30'),
+        'uk': ('UTC+0', 0, '17:30'), 'netherlands': ('UTC+1', 1, '15:30'),
+        'belgium': ('UTC+1', 1, '15:30'), 'sweden': ('UTC+1', 1, '15:30'),
+        'norway': ('UTC+1', 1, '15:30'), 'finland': ('UTC+2', 2, '14:30'),
+        'denmark': ('UTC+1', 1, '15:30'), 'poland': ('UTC+1', 1, '15:30'),
+        'czech': ('UTC+1', 1, '15:30'), 'austria': ('UTC+1', 1, '15:30'),
+        'switzerland': ('UTC+1', 1, '15:30'), 'usa': ('UTC-5~-8', -5, '22:30'),
+        'united states': ('UTC-5~-8', -5, '22:30'), 'canada': ('UTC-5~-8', -5, '22:30'),
+        'mexico': ('UTC-6~-8', -6, '23:30'), 'australia': ('UTC+10~+11', 10, '07:30'),
+        'japan': ('UTC+9', 9, '08:30'), 'korea': ('UTC+9', 9, '08:30'),
+        'india': ('UTC+5:30', 5.5, '12:00'), 'brazil': ('UTC-3', -3, '20:30'),
+        'turkey': ('UTC+3', 3, '14:30'), 'russia': ('UTC+3~+12', 3, '14:30'),
+    }
+
+    def get_timezone_advice(self, country):
+        """根据国家获取时区建议"""
+        if not country:
+            return None
+        cl = country.lower().strip()
+        for key, (tz, offset, cst) in self._TIMEZONE_MAP.items():
+            if key in cl or cl in key:
+                return {'tz': tz, 'cst_send': cst, 'label': country}
+        if any(eu in cl for eu in ['europe', 'europa']):
+            return {'tz': 'UTC+1', 'cst_send': '15:30', 'label': country}
+        return None
+
+    # ===== 新功能：SOP跟进节奏 =====
+
+    @staticmethod
+    def _add_working_days(from_date, days):
+        """增加工作日"""
+        current = from_date
+        added = 0
+        while added < days:
+            current += timedelta(days=1)
+            if current.weekday() < 5:
+                added += 1
+        return current
+
+    def calculate_next_follow_up(self, customer_id):
+        """根据SOP节奏计算下次跟进日期"""
+        customer, err = self.get_customer(customer_id)
+        if err or not customer:
+            return None, err
+        tl_df, _ = self.get_customer_timeline(customer_id)
+        email_events = tl_df[tl_df['event_type'] == '生成邮件'] if not tl_df.empty else pd.DataFrame()
+        email_count = len(email_events)
+        today = datetime.now().date()
+        last_contact = today
+        if not tl_df.empty:
+            try:
+                last_contact = pd.to_datetime(tl_df.iloc[0]['created_at']).date()
+            except Exception:
+                pass
+        if email_count == 0:
+            d = self._add_working_days(today, 1)
+            return d, "尚未发送开发信，建议尽快发送"
+        elif email_count == 1:
+            d = self._add_working_days(last_contact, 7)
+            return d, f"首次跟进（第{email_count}轮），7个工作日后"
+        elif email_count == 2:
+            d = self._add_working_days(last_contact, 10)
+            return d, f"二次跟进（第{email_count}轮），10个工作日后"
+        elif email_count == 3:
+            d = self._add_working_days(last_contact, 21)
+            return d, f"三次跟进（第{email_count}轮），21个工作日后"
+        else:
+            return last_contact + timedelta(days=90), "季度轻触达，90天后"
+
     def get_customer_timeline(self, customer_id):
         try:
             conn = self.get_connection()
@@ -660,6 +847,31 @@ C级客户标准：
                 INSERT INTO follow_up_timeline (customer_id, event_type, event_content)
                 VALUES (?, ?, ?)
             """, (customer_id, "生成邮件", f"AI开发邮件 v{version} 已保存"))
+            cursor.execute("""
+                UPDATE customers SET last_follow_up_date = ? WHERE id = ?
+            """, (datetime.now().strftime('%Y-%m-%d'), customer_id))
+            conn.commit()
+            conn.close()
+            return version, None
+        except Exception as e:
+            return None, str(e)
+
+    def record_follow_up(self, customer_id, subject, content):
+        """记录跟进邮件到历史和时间轴"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT MAX(version) FROM email_history WHERE customer_id = ?", (customer_id,))
+            max_v = cursor.fetchone()[0]
+            version = (max_v or 0) + 1
+            cursor.execute("""
+                INSERT INTO email_history (customer_id, version, email_subject, email_content)
+                VALUES (?, ?, ?, ?)
+            """, (customer_id, version, subject, content))
+            cursor.execute("""
+                INSERT INTO follow_up_timeline (customer_id, event_type, event_content)
+                VALUES (?, ?, ?)
+            """, (customer_id, "跟进邮件", f"跟进邮件 v{version} 已保存"))
             cursor.execute("""
                 UPDATE customers SET last_follow_up_date = ? WHERE id = ?
             """, (datetime.now().strftime('%Y-%m-%d'), customer_id))
@@ -765,52 +977,80 @@ C级客户标准：
             return pd.DataFrame(), str(e)
 
     def backup_data(self, backup_path):
-        """导出所有客户数据到Excel备份文件"""
+        """导出所有数据到Excel备份文件（每个表一个sheet）"""
         try:
             conn = self.get_connection()
-            cursor = conn.cursor()
-            cursor.execute("PRAGMA table_info(customers)")
-            columns = [row[1] for row in cursor.fetchall()]
-            df = pd.read_sql("SELECT * FROM customers ORDER BY id", conn)
-            conn.close()
-
             os.makedirs(os.path.dirname(backup_path) or '.', exist_ok=True)
 
-            if df is not None and not df.empty:
-                df.to_excel(backup_path, index=False, engine='openpyxl')
-            else:
-                pd.DataFrame(columns=columns).to_excel(backup_path, index=False, engine='openpyxl')
+            tables = {
+                'customers': "SELECT * FROM customers ORDER BY id",
+                'email_templates': "SELECT * FROM email_templates ORDER BY id",
+                'email_history': "SELECT * FROM email_history ORDER BY id",
+                'follow_up_timeline': "SELECT * FROM follow_up_timeline ORDER BY id",
+                'system_settings': "SELECT * FROM system_settings ORDER BY id",
+            }
 
+            with pd.ExcelWriter(backup_path, engine='openpyxl') as writer:
+                for sheet_name, query in tables.items():
+                    df = pd.read_sql(query, conn)
+                    if df.empty:
+                        # Write empty DataFrame with columns so sheet exists
+                        cursor = conn.cursor()
+                        cursor.execute(f"PRAGMA table_info({sheet_name})")
+                        columns = [row[1] for row in cursor.fetchall()]
+                        pd.DataFrame(columns=columns).to_excel(writer, sheet_name=sheet_name, index=False)
+                    else:
+                        df.to_excel(writer, sheet_name=sheet_name, index=False)
+
+            conn.close()
             return True, None
         except Exception as e:
             return False, str(e)
 
     def restore_data(self, backup_path):
-        """从Excel备份文件恢复数据（全量替换）"""
+        """从Excel备份恢复所有数据（全量替换，多sheet）"""
         try:
-            try:
-                df = pd.read_excel(backup_path, engine='openpyxl')
-            except Exception as e:
-                return False, f"备份文件读取失败，该文件可能已损坏：{str(e)}"
+            xls = pd.ExcelFile(backup_path, engine='openpyxl')
 
-            if df.empty:
-                return False, "备份文件为空，无法恢复"
-
-            if 'company_name' not in df.columns:
-                return False, "备份文件格式无效：缺少「公司名称」列"
+            # 检查必须的sheet
+            required_sheets = {'customers', 'email_history', 'follow_up_timeline'}
+            missing = required_sheets - set(xls.sheet_names)
+            if missing:
+                return False, f"备份文件格式无效：缺少sheet {', '.join(sorted(missing))}"
 
             conn = self.get_connection()
             cursor = conn.cursor()
 
-            cursor.execute("PRAGMA table_info(customers)")
-            valid_columns = [row[1] for row in cursor.fetchall()]
+            # 读取各个sheet
+            customers_df = pd.read_excel(xls, sheet_name='customers')
+            email_history_df = pd.read_excel(xls, sheet_name='email_history') if 'email_history' in xls.sheet_names else pd.DataFrame()
+            timeline_df = pd.read_excel(xls, sheet_name='follow_up_timeline') if 'follow_up_timeline' in xls.sheet_names else pd.DataFrame()
+            templates_df = pd.read_excel(xls, sheet_name='email_templates') if 'email_templates' in xls.sheet_names else pd.DataFrame()
+            settings_df = pd.read_excel(xls, sheet_name='system_settings') if 'system_settings' in xls.sheet_names else pd.DataFrame()
 
+            if customers_df.empty:
+                return False, "备份文件中「客户」数据为空，无法恢复"
+
+            # 获取各表有效列
+            def get_valid_columns(table_name):
+                cursor.execute(f"PRAGMA table_info({table_name})")
+                return [row[1] for row in cursor.fetchall()]
+
+            cust_valid = get_valid_columns('customers')
+            email_valid = get_valid_columns('email_history')
+            timeline_valid = get_valid_columns('follow_up_timeline')
+            tpl_valid = get_valid_columns('email_templates')
+            settings_valid = get_valid_columns('system_settings')
+
+            # 清理所有表（外键顺序：先删子表）
             cursor.execute("DELETE FROM email_history")
             cursor.execute("DELETE FROM follow_up_timeline")
+            cursor.execute("DELETE FROM email_templates")
+            cursor.execute("DELETE FROM system_settings")
             cursor.execute("DELETE FROM customers")
 
-            restored_count = 0
-            for _, row in df.iterrows():
+            # 工具：从行中提取有效列数据
+            def row_to_dict(row, valid_columns):
                 data = {}
                 for col in valid_columns:
                     if col in row.index:
@@ -818,28 +1058,93 @@ C级客户标准：
                         data[col] = None if pd.isna(v) else (v.item() if hasattr(v, 'item') else v)
                     else:
                         data[col] = None
+                return data
 
-                if not str(data.get('company_name', '') or '').strip():
+            # 1. 恢复 system_settings
+            if not settings_df.empty:
+                for _, row in settings_df.iterrows():
+                    d = row_to_dict(row, settings_valid)
+                    key = d.get('setting_key')
+                    value = d.get('setting_value')
+                    if key:
+                        cursor.execute(
+                            "INSERT OR REPLACE INTO system_settings (setting_key, setting_value) VALUES (?, ?)",
+                            (key, value)
+                        )
+
+            # 2. 恢复 email_templates
+            restored_tpls = 0
+            if not templates_df.empty:
+                for _, row in templates_df.iterrows():
+                    d = row_to_dict(row, tpl_valid)
+                    name = d.get('name')
+                    if not name:
+                        continue
+                    cursor.execute(
+                        "INSERT INTO email_templates (name, category, subject, content) VALUES (?, ?, ?, ?)",
+                        (name, d.get('category'), d.get('subject'), d.get('content'))
+                    )
+                    restored_tpls += 1
+
+            # 3. 恢复 customers（保留原始ID）
+            restored_count = 0
+            for _, row in customers_df.iterrows():
+                d = row_to_dict(row, cust_valid)
+                if not str(d.get('company_name', '') or '').strip():
                     continue
 
-                fields = [f for f in valid_columns if f in data]
-                values = [data[f] for f in fields]
+                fields = [f for f in cust_valid if f in d]
+                values = [d[f] for f in fields]
                 placeholders = ', '.join(['?' for _ in fields])
 
                 cursor.execute(
                     f"INSERT INTO customers ({', '.join(fields)}) VALUES ({placeholders})",
                     values
                 )
-                cursor.execute(
-                    "INSERT INTO follow_up_timeline (customer_id, event_type, event_content) VALUES (?, ?, ?)",
-                    (cursor.lastrowid, "系统恢复", f"从备份文件恢复数据")
-                )
                 restored_count += 1
+
+            # 4. 恢复 follow_up_timeline
+            restored_tl = 0
+            if not timeline_df.empty:
+                for _, row in timeline_df.iterrows():
+                    d = row_to_dict(row, timeline_valid)
+                    cid = d.get('customer_id')
+                    etype = d.get('event_type')
+                    if cid is None or not etype:
+                        continue
+                    cursor.execute(
+                        "INSERT INTO follow_up_timeline (customer_id, event_type, event_content) VALUES (?, ?, ?)",
+                        (cid, etype, d.get('event_content'))
+                    )
+                    restored_tl += 1
+
+            # 5. 恢复 email_history
+            restored_emails = 0
+            if not email_history_df.empty:
+                for _, row in email_history_df.iterrows():
+                    d = row_to_dict(row, email_valid)
+                    cid = d.get('customer_id')
+                    if cid is None:
+                        continue
+                    cursor.execute(
+                        "INSERT INTO email_history (customer_id, version, email_subject, email_content) VALUES (?, ?, ?, ?)",
+                        (cid, d.get('version', 1), d.get('email_subject'), d.get('email_content'))
+                    )
+                    restored_emails += 1
 
             conn.commit()
             conn.close()
+
+            parts = [f"客户 {restored_count} 条"]
+            if restored_emails:
+                parts.append(f"邮件 {restored_emails} 条")
+            if restored_tl:
+                parts.append(f"跟进记录 {restored_tl} 条")
+            if restored_tpls:
+                parts.append(f"模板 {restored_tpls} 条")
+
             self._init_all_auto_scores()
-            return True, f"恢复完成，共恢复 {restored_count} 条客户记录"
+            return True, f"恢复完成：{', '.join(parts)}"
         except Exception as e:
             try:
                 conn.rollback()
