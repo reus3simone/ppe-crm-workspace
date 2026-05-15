@@ -10,8 +10,7 @@ __pycache__/
 *.pyd
 
 # 数据库文件（含客户数据，不上传）
-ppe_customers.db
-database/customers.db
+*.db
 
 # Streamlit配置
 .streamlit/

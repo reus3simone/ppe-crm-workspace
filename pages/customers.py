@@ -31,7 +31,7 @@ def render_customer_list():
             else:
                 grade_filter = st.selectbox("客户等级", ["全部", "A", "B", "C"])
         with c3:
-            dev_status_options = ["全部", "初次开发", "已报价", "样品阶段"]
+            dev_status_options = ["全部", "初次开发", "已发开发信", "已报价", "样品阶段"]
             if home_filter in ('pending', 'quoted', 'sample'):
                 dev_map_idx = {'pending': 1, 'quoted': 2, 'sample': 3}
                 dev_filter = st.selectbox("开发状态", dev_status_options, index=dev_map_idx[home_filter])
