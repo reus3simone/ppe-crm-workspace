@@ -2,7 +2,6 @@ import streamlit as st
 import sys
 import os
 
-# 页面配置 — 必须是第一个 Streamlit 命令
 st.set_page_config(
     page_title="PPE客户开发工作区",
     page_icon="📊",
@@ -11,11 +10,10 @@ st.set_page_config(
     menu_items={
         'Get Help': None,
         'Report a bug': None,
-        'About': "PPE客户开发管理系统 v3.1"
+        'About': "PPE客户开发管理系统 v4.0"
     }
 )
 
-# 加载 CSS（使用绝对路径）
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 css_path = os.path.join(BASE_DIR, "assets", "styles.css")
 if os.path.exists(css_path):
@@ -24,45 +22,19 @@ if os.path.exists(css_path):
 
 sys.path.append(BASE_DIR)
 
-# 导入页面
 from pages.home import render_home_page
-from pages.customers import render_customer_list, render_customer_detail, render_customer_form
-from pages.ai_email import render_ai_email
-from pages.research import render_research
+from pages.workspace import render_workspace
+from pages.settings import render_settings
 
-# 隐藏 Streamlit 自动生成的英文导航
 st.markdown("""
 <style>
     [data-testid="stSidebarNav"] { display: none; }
 </style>
 """, unsafe_allow_html=True)
 
-# Session State 初始化
 if 'current_page' not in st.session_state:
     st.session_state['current_page'] = "首页"
 
-if 'show_import' not in st.session_state:
-    st.session_state['show_import'] = False
-
-if 'show_add_form' not in st.session_state:
-    st.session_state['show_add_form'] = False
-
-if 'selected_customer' not in st.session_state:
-    st.session_state['selected_customer'] = None
-
-if 'edit_customer' not in st.session_state:
-    st.session_state['edit_customer'] = None
-
-if 'ai_email_customer' not in st.session_state:
-    st.session_state['ai_email_customer'] = None
-
-if 'research_customer' not in st.session_state:
-    st.session_state['research_customer'] = None
-
-if 'confirm_restore' not in st.session_state:
-    st.session_state['confirm_restore'] = False
-
-# 侧边栏导航
 with st.sidebar:
     st.markdown("""
     <div style="display:flex;align-items:center;gap:10px;padding:8px 0 16px 0;">
@@ -74,9 +46,8 @@ with st.sidebar:
 
     nav_items = [
         ("🏠", "首页"),
-        ("👥", "客户管理"),
-        ("📧", "跟进邮件工坊"),
-        ("🔍", "客户背景研究"),
+        ("👥", "客户工作台"),
+        ("⚙️", "设置"),
     ]
 
     for icon, label in nav_items:
@@ -92,29 +63,18 @@ with st.sidebar:
 
         if st.button(f"{icon}  {label}", key=f"nav_{label}", use_container_width=True):
             st.session_state['current_page'] = label
+            for k in ['ws_selected_id', 'ws_show_import', 'ws_new_customer', 'ws_edit_id']:
+                st.session_state.pop(k, None)
             st.rerun()
 
     st.markdown("---")
-    st.caption("PPE客户开发管理系统 v3.1")
+    st.caption("PPE客户开发管理系统 v4.0")
 
-# 页面路由
 page = st.session_state['current_page']
 
 if page == "首页":
     render_home_page()
-
-elif page == "客户管理":
-    if st.session_state.get('show_add_form'):
-        render_customer_form(is_edit=False)
-    elif st.session_state.get('edit_customer'):
-        render_customer_form(is_edit=True)
-    elif st.session_state.get('selected_customer'):
-        render_customer_detail()
-    else:
-        render_customer_list()
-
-elif page == "跟进邮件工坊":
-    render_ai_email()
-
-elif page == "客户背景研究":
-    render_research()
+elif page == "客户工作台":
+    render_workspace()
+elif page == "设置":
+    render_settings()

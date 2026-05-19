@@ -138,6 +138,33 @@ class Database:
                 )
             """)
 
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS co_worker_customers (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    co_worker_name TEXT NOT NULL,
+                    company_name TEXT,
+                    contact_person TEXT,
+                    email TEXT,
+                    notes TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS team_members (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT UNIQUE NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+            # 默认团队成员
+            default_members = ['Elsa', '张三', '李四']
+            for name in default_members:
+                cursor.execute("""
+                    INSERT OR IGNORE INTO team_members (name) VALUES (?)
+                """, (name,))
+
             default_settings = {
                 'company_intro': """KEYSTONE is the international brand of Jiangsu Kexu Textile Technology Co., Ltd. (est. 2000, Changzhou, China).
 We engineer staple-fiber protective yarns and fabrics for industrial PPE—cut resistance, FR / heat protection, and arc-related protective textiles—with in-house yarn spinning and fabric engineering capabilities.""",
@@ -382,7 +409,8 @@ C级客户标准：
             manual_grade = customer_data.get('customer_grade', '').strip()
             if manual_grade not in ('A', 'B', 'C'):
                 customer_data['customer_grade'] = self._get_customer_grade_by_score(score)
-            customer_data['last_follow_up_date'] = datetime.now().strftime('%Y-%m-%d')
+            if 'last_follow_up_date' not in customer_data or not customer_data.get('last_follow_up_date'):
+                customer_data['last_follow_up_date'] = datetime.now().strftime('%Y-%m-%d')
             customer_data.setdefault('assigned_to', 'Elsa')
             customer_data.setdefault('status', '正在跟进')
 
@@ -426,6 +454,22 @@ C级客户标准：
                     INSERT INTO follow_up_timeline (customer_id, event_type, event_content)
                     VALUES (?, ?, ?)
                 """, (customer_id, "冲突提醒", conflict_msg))
+
+            # 保护检查
+            try:
+                p_warns = self.check_protection_conflict(
+                    clean_data.get('company_name', ''),
+                    clean_data.get('contact_person', ''),
+                    clean_data.get('email', '')
+                )
+                if p_warns:
+                    for pw in p_warns:
+                        cursor.execute("""
+                            INSERT INTO follow_up_timeline (customer_id, event_type, event_content)
+                            VALUES (?, ?, ?)
+                        """, (customer_id, "撞客户警告", pw['message']))
+            except Exception:
+                pass
 
             conn.commit()
             conn.close()
@@ -728,25 +772,43 @@ C级客户标准：
 
     _PRODUCT_RULES = [
         ('阻燃面料（FR protective fabrics）', '⭐ 优先',
-         ['fr', '阻燃', 'flame', 'fire retardant', 'nfpa 2112', 'en iso 11612',
-          'arc flash', '电弧', '焊接', 'welding', 'en iso 11611', '工装',
-          'workwear', 'firefighter', '消防', '防护服']),
+         ['fr fabric', '阻燃面料', 'flame retardant fabric', 'fire retardant',
+          'nfpa 2112', 'en iso 11612', 'en11612',
+          'arc flash', '电弧', '电弧防护', '焊接', 'welding', 'en iso 11611',
+          '工装面料', 'workwear fabric', 'firefighter', '消防服',
+          '防护服面料', '阻燃工装', 'fr clothing',
+          '热防护', 'thermal protective', '高温防护']),
         ('防切割面料（Cut-resistant fabrics）', '⭐ 优先',
          ['cut resistant fabric', '防切割面料', '防割面料', 'en388',
-          'ansi cut', 'protective fabric', '防护面料']),
+          'ansi cut', 'protective fabric', '防护面料',
+          '抗切割', '耐磨面料', 'anti cut', 'cut resistant textile',
+          '高强面料', 'high strength fabric']),
         ('防切割纱线（Cut-resistant yarns）', '⭐ 优先',
          ['cut resistant yarn', '防切割纱线', 'hppe yarn', '芳纶纱',
-          '针织纱', '手套纱', 'knitting yarn', 'glove yarn']),
+          '针织纱', '手套纱', 'knitting yarn', 'glove yarn',
+          '包芯纱', 'core spun', '复合纱', 'composite yarn',
+          '防割纱', '抗切割纱线']),
         ('阻燃耐高温纱线（FR / aramid yarns）', '高',
          ['fr yarn', '阻燃纱线', '耐高温纱线', 'heat resistant yarn',
-          '芳纶', 'aramid', 'meta-aramid', '预氧丝', 'panox']),
+          '芳纶', 'aramid', 'meta-aramid', '间位芳纶', '1313',
+          '对位芳纶', '1414', 'para-aramid',
+          '预氧丝', 'panox', '预氧化', '氧化丝',
+          '改性腈纶', 'modacrylic', '阻燃腈纶',
+          '混纺纱', '阻燃混纺', 'fr blended']),
         ('防切割手套（Cut-resistant gloves）', '中',
          ['手套', 'glove', 'hand protection', '护具', 'knitted glove',
-          '机械防护', '作业防护']),
+          '机械防护', '作业防护', '劳保手套', '安全手套',
+          '防割手套', 'cut resistant glove', 'working glove']),
         ('防割袖套（Cut-resistant sleeves）', '中',
-         ['袖套', 'sleeve', 'arm protection', '手臂防护']),
+         ['袖套', 'sleeve', 'arm protection', '手臂防护',
+          '护袖', 'arm guard', '安全袖套']),
         ('防割服（Cut-resistant clothing）', '中',
-         ['防护服', 'protective clothing', 'coverall', '工装', '安全服']),
+         ['防护服', 'protective clothing', 'coverall', '工装', '安全服',
+          '防割服', 'cut resistant clothing', '防刺服',
+          '抗割服装']),
+        ('工业缝纫线（Industrial sewing thread）', '中',
+         ['缝纫线', 'sewing thread', 'thread', '阻燃缝纫',
+          '芳纶缝纫线', 'aramid thread', '高强缝纫线']),
     ]
 
     def get_product_match(self, industry, products, notes=""):
@@ -761,31 +823,383 @@ C级客户标准：
         return results
 
     _TIMEZONE_MAP = {
-        'germany': ('UTC+1', 1, '15:30'), 'france': ('UTC+1', 1, '15:30'),
-        'italy': ('UTC+1', 1, '15:30'), 'spain': ('UTC+1', 1, '15:30'),
-        'uk': ('UTC+0', 0, '17:30'), 'netherlands': ('UTC+1', 1, '15:30'),
-        'belgium': ('UTC+1', 1, '15:30'), 'sweden': ('UTC+1', 1, '15:30'),
-        'norway': ('UTC+1', 1, '15:30'), 'finland': ('UTC+2', 2, '14:30'),
-        'denmark': ('UTC+1', 1, '15:30'), 'poland': ('UTC+1', 1, '15:30'),
-        'czech': ('UTC+1', 1, '15:30'), 'austria': ('UTC+1', 1, '15:30'),
-        'switzerland': ('UTC+1', 1, '15:30'), 'usa': ('UTC-5~-8', -5, '22:30'),
-        'united states': ('UTC-5~-8', -5, '22:30'), 'canada': ('UTC-5~-8', -5, '22:30'),
-        'mexico': ('UTC-6~-8', -6, '23:30'), 'australia': ('UTC+10~+11', 10, '07:30'),
-        'japan': ('UTC+9', 9, '08:30'), 'korea': ('UTC+9', 9, '08:30'),
-        'india': ('UTC+5:30', 5.5, '12:00'), 'brazil': ('UTC-3', -3, '20:30'),
-        'turkey': ('UTC+3', 3, '14:30'), 'russia': ('UTC+3~+12', 3, '14:30'),
+        # (base_utc, has_dst, dst_utc, label)
+        'germany': (1, True, 2, '德国'), '德国': (1, True, 2, '德国'),
+        'france': (1, True, 2, '法国'), '法国': (1, True, 2, '法国'),
+        'italy': (1, True, 2, '意大利'), '意大利': (1, True, 2, '意大利'),
+        'spain': (1, True, 2, '西班牙'), '西班牙': (1, True, 2, '西班牙'),
+        'netherlands': (1, True, 2, '荷兰'), '荷兰': (1, True, 2, '荷兰'),
+        'belgium': (1, True, 2, '比利时'), '比利时': (1, True, 2, '比利时'),
+        'sweden': (1, True, 2, '瑞典'), '瑞典': (1, True, 2, '瑞典'),
+        'norway': (1, True, 2, '挪威'), '挪威': (1, True, 2, '挪威'),
+        'finland': (2, True, 3, '芬兰'), '芬兰': (2, True, 3, '芬兰'),
+        'denmark': (1, True, 2, '丹麦'), '丹麦': (1, True, 2, '丹麦'),
+        'poland': (1, True, 2, '波兰'), '波兰': (1, True, 2, '波兰'),
+        'czech': (1, True, 2, '捷克'), '捷克': (1, True, 2, '捷克'),
+        'austria': (1, True, 2, '奥地利'), '奥地利': (1, True, 2, '奥地利'),
+        'switzerland': (1, True, 2, '瑞士'), '瑞士': (1, True, 2, '瑞士'),
+        'uk': (0, True, 1, '英国'), '英国': (0, True, 1, '英国'),
+        'portugal': (0, True, 1, '葡萄牙'), '葡萄牙': (0, True, 1, '葡萄牙'),
+        'usa': (-5, True, -4, '美国'), '美国': (-5, True, -4, '美国'),
+        'united states': (-5, True, -4, '美国'),
+        'canada': (-5, True, -4, '加拿大'), '加拿大': (-5, True, -4, '加拿大'),
+        'mexico': (-6, False, -6, '墨西哥'), '墨西哥': (-6, False, -6, '墨西哥'),
+        'australia': (10, True, 11, '澳大利亚'), '澳大利亚': (10, True, 11, '澳大利亚'),
+        'japan': (9, False, 9, '日本'), '日本': (9, False, 9, '日本'),
+        'korea': (9, False, 9, '韩国'), '韩国': (9, False, 9, '韩国'),
+        'india': (5.5, False, 5.5, '印度'), '印度': (5.5, False, 5.5, '印度'),
+        'brazil': (-3, False, -3, '巴西'), '巴西': (-3, False, -3, '巴西'),
+        'turkey': (3, False, 3, '土耳其'), '土耳其': (3, False, 3, '土耳其'),
+        'russia': (3, False, 3, '俄罗斯'), '俄罗斯': (3, False, 3, '俄罗斯'),
+        'colombia': (-5, False, -5, '哥伦比亚'), '哥伦比亚': (-5, False, -5, '哥伦比亚'),
+        'vietnam': (7, False, 7, '越南'), '越南': (7, False, 7, '越南'),
     }
 
+    @staticmethod
+    def _is_dst_season(today=None):
+        """判断当前是否为北半球夏令时季节（3月第2个周日 ~ 11月第1个周日）"""
+        if today is None:
+            today = date.today()
+        # 简化判断：4月~10月为夏令时季节
+        return 4 <= today.month <= 10
+
     def get_timezone_advice(self, country):
-        """根据国家获取时区建议"""
+        """根据国家获取时区、DST、最佳发送窗口等完整建议"""
         if not country:
             return None
         cl = country.lower().strip()
-        for key, (tz, offset, cst) in self._TIMEZONE_MAP.items():
+        matched_key = None
+        for key in self._TIMEZONE_MAP:
             if key in cl or cl in key:
-                return {'tz': tz, 'cst_send': cst, 'label': country}
-        if any(eu in cl for eu in ['europe', 'europa']):
-            return {'tz': 'UTC+1', 'cst_send': '15:30', 'label': country}
+                matched_key = key
+                break
+        if not matched_key:
+            if any(eu in cl for eu in ['europe', 'europa']):
+                matched_key = 'germany'
+            else:
+                return None
+
+        base_utc, has_dst, dst_utc, label = self._TIMEZONE_MAP[matched_key]
+
+        today = date.today()
+        is_dst = has_dst and self._is_dst_season(today)
+        current_utc = dst_utc if is_dst else base_utc
+
+        # 客户当地最佳发送窗口：09:00 - 11:00
+        local_start_h, local_end_h = 9, 11
+
+        def _utc_to_cst(utc_offset, local_hour):
+            """将客户当地小时转为北京时间"""
+            cst_h = (local_hour - utc_offset + 8) % 24
+            return int(cst_h)
+
+        cst_start = _utc_to_cst(current_utc, local_start_h)
+        cst_end = _utc_to_cst(current_utc, local_end_h)
+
+        # 格式化北京区间
+        def _fmt(h):
+            return f"{h:02d}:00"
+
+        cst_range = f"{_fmt(cst_start)} - {_fmt(cst_end)}"
+
+        # DST 文字说明
+        dst_text = ''
+        if has_dst:
+            if is_dst:
+                dst_text = f'[夏令时] 当前 UTC+{dst_utc}，非夏令时 UTC+{base_utc}（每年3月-10月）'
+            else:
+                dst_text = f'[冬令时] 当前 UTC+{base_utc}，夏令时 UTC+{dst_utc}（3月-10月）'
+
+        # 客户当地当前时间（近似）
+        import datetime as dt
+        now_utc = dt.datetime.now(dt.timezone.utc)
+        local_now = now_utc.hour + current_utc
+        local_now_str = f"{(int(local_now) % 24):02d}:{now_utc.minute:02d}（约）"
+
+        return {
+            'utc': current_utc,
+            'base_utc': base_utc,
+            'is_dst': is_dst,
+            'label': label,
+            'cst_range': cst_range,
+            'local_window': f"{local_start_h}:00 - {local_end_h}:00",
+            'dst_text': dst_text,
+            'local_now': local_now_str,
+        }
+
+    _CULTURE_GUIDE = {
+        'germany': {
+            'weekend': '周六日',
+            'best_days': '周二至周四',
+            'avoid_days': '周五下午（很多人提前下班）',
+            'language': '德语 / 英语（商务英语可通）',
+            'etiquette': [
+                '邮件开头用 "Sehr geehrte" + 姓，关系熟后用 "Guten Tag"',
+                '德国人重视头衔（Dr./Prof.），称呼别省略',
+                '报价要精准、数据要严谨，德国人对模糊表述反感',
+                '决策链长且层级分明，不要期望快速成交',
+                '见面准时是基本要求，迟到是大忌',
+            ],
+            'taboos': [
+                '别拿二战、纳粹当话题',
+                '别跟德国人比价格，他们更看重质量和技术参数',
+                '私生活（收入、家庭）不是商务话题',
+            ],
+            'holidays': '5月： Christi Himmelfahrt（耶稣升天节） | 6月：Pfingsten（圣灵降临节）',
+        },
+        'france': {
+            'weekend': '周六日',
+            'best_days': '周二至周四',
+            'avoid_days': '周五下午、周一上午、8月全月（全国放假）',
+            'language': '法语优先，英语也可',
+            'etiquette': [
+                '开头用法语问候 "Bonjour" 很重要',
+                '法国人重视正式感，邮件不要太随意',
+                '8月大部分法国公司关门休假，别在这个月发开发信',
+                '商务沟通偏向自上而下，找对决策人比磨中间人有效',
+            ],
+            'taboos': [
+                '别一上来就谈钱，先建立关系',
+                '避免英语与法语之间的语言优越感争论',
+                '不要在邮件中用过多的销售套话',
+            ],
+            'holidays': '5月：Fête du Travail（劳动节） | 7/14：国庆日 | 8月：全国暑假',
+        },
+        'italy': {
+            'weekend': '周六日',
+            'best_days': '周二至周四',
+            'avoid_days': '周五下午、8月 Ferragosto 前后',
+            'language': '意大利语 / 英语',
+            'etiquette': [
+                '意大利人关系导向，先建立信任再谈业务',
+                '邮件回复可能不快，不代表没兴趣',
+                '八月基本不工作（Ferragosto），别催',
+                '意大利中小企业多，老板直接决策',
+            ],
+            'taboos': [
+                '别拿南北差异开玩笑',
+                '别跟意大利人比披萨/意面',
+                '邮件别太生硬，加点人情味',
+            ],
+            'holidays': '8月：Ferragosto（全国休假） | 4月：Pasquetta（复活节周一）',
+        },
+        'spain': {
+            'weekend': '周六日',
+            'best_days': '周二至周四',
+            'avoid_days': '周五下午、8月、Siesta 时间（14:00-16:00）别打电话',
+            'language': '西班牙语 / 英语',
+            'etiquette': [
+                '西班牙也有午休文化，下午2点到4点不适宜打电话',
+                '关系建立很重要，初次邮件不要太硬',
+                '8月份很多公司关门或不处理新业务',
+                '决策比北欧国家慢，正常跟进节奏即可',
+            ],
+            'taboos': [
+                '别问加泰罗尼亚独立等政治话题',
+                '别催太紧，西班牙人有自己的节奏',
+            ],
+            'holidays': '8月：全国暑假 | 各地还有自己的守护神节',
+        },
+        'uk': {
+            'weekend': '周六日',
+            'best_days': '周二至周四',
+            'avoid_days': '周五下午、Bank Holiday 长周末',
+            'language': '英语',
+            'etiquette': [
+                '英式商务讲究礼貌和保守，不要过于热情',
+                '邮件措辞要客气，多用 "please" "I was wondering"',
+                '英国人决策偏谨慎，需要多次跟进',
+                '善用 "understatement"（低调表达），别过分吹嘘产品',
+            ],
+            'taboos': [
+                '避免谈论脱欧政治话题',
+                '不要混淆英国/英格兰/苏格兰的概念',
+                '别用美式拼写（color→colour, center→centre）',
+                '问工资年龄是粗鲁的',
+            ],
+            'holidays': '5月：Early May BH / Spring BH | 8月：Summer BH（各地不同）',
+        },
+        'usa': {
+            'weekend': '周六日',
+            'best_days': '周一至周四',
+            'avoid_days': '周末尽量不打扰、感恩节/圣诞节前后',
+            'language': '英语（美式）',
+            'etiquette': [
+                '美国决策快，直接说明产品价值和差异化优势',
+                '美国人喜欢直奔主题，邮件前两行就要抓住注意力',
+                '称呼用 First name（名字）即可，不用太正式',
+                '感恩节（11月第4个周四）到元旦期间效率低',
+            ],
+            'taboos': [
+                '避免政治话题（大选、枪支、堕胎等）',
+                '别过度承诺交付时间',
+                '自夸要适度，有数据支撑更好',
+            ],
+            'holidays': '5月：Memorial Day | 7/4：独立日 | 11月：Thanksgiving | 12月：圣诞+新年',
+        },
+        'turkey': {
+            'weekend': '周六日（周五下午有些公司早退）',
+            'best_days': '周日至周四',
+            'avoid_days': '周五下午、宗教节日（开斋节/古尔邦节）',
+            'language': '土耳其语 / 英语',
+            'etiquette': [
+                '土耳其人关系导向，信任比价格重要',
+                '邮件开头加 "Sayın" + 名字表示尊重',
+                '开斋节和古尔邦节前后一周基本不办公',
+                '谈判要有耐心，土耳其人喜欢商量',
+            ],
+            'taboos': [
+                '不要批评土耳其的政治或宗教',
+                '不要使用与希腊有关的比较',
+                '避免左手递名片或物品',
+            ],
+            'holidays': 'Ramazan Bayrami（开斋节） | Kurban Bayrami（古尔邦节）| 日期每年变动',
+        },
+        'india': {
+            'weekend': '周六日（部分公司周日单休）',
+            'best_days': '周一到周五',
+            'avoid_days': '排灯节前后、洒红节',
+            'language': '英语（印式英语可通）',
+            'etiquette': [
+                '印度英语口音重，邮件沟通比电话更清晰',
+                '印度人习惯讨价还价，报价可以留空间',
+                '决策者通常是老板或总监级别',
+                '关系建立很重要，先聊几句再谈业务',
+            ],
+            'taboos': [
+                '不要用左手递东西',
+                '避免谈巴基斯坦等政治敏感话题',
+                '牛在印度是神圣的，别拿牛肉开玩笑',
+                '不要催促印度人做决定，他们喜欢多方比较',
+            ],
+            'holidays': '10-11月：Diwali（排灯节，全国放假）| 3月：Holi（洒红节）',
+        },
+        'poland': {
+            'weekend': '周六日',
+            'best_days': '周一至周四',
+            'avoid_days': '周五下午、圣诞节/复活节前后',
+            'language': '波兰语 / 英语（年轻人英语不错）',
+            'etiquette': [
+                '波兰商务偏正式，邮件开头用 "Szanowny Pan/Pani" + 姓',
+                '报价和条款要写清楚，波兰人注重细节',
+                '决策偏慢，需要多轮沟通',
+            ],
+            'taboos': [
+                '不要提俄波关系',
+                '别把波兰称为东欧（他们更认同中欧）',
+            ],
+            'holidays': '5/1：劳动节 | 5/3：宪法日 | Boze Cialo（基督圣体节，日期不定）',
+        },
+        'portugal': {
+            'weekend': '周六日',
+            'best_days': '周二至周四',
+            'avoid_days': '8月、周五下午、狂欢节前后',
+            'language': '葡萄牙语 / 英语',
+            'etiquette': [
+                '葡国人友好但商务节奏偏慢',
+                '建立关系比直接谈价格更有效',
+                '8月基本不办公',
+            ],
+            'taboos': [
+                '别拿西班牙和葡萄牙做比较，他们不喜欢被说像西班牙',
+                '避免谈论前殖民地话题',
+            ],
+            'holidays': '6月：Dia de Portugal | 狂欢节（2月）| 8月：全国休假',
+        },
+        'belgium': {
+            'weekend': '周六日',
+            'best_days': '周二至周四',
+            'avoid_days': '周五下午、7月中旬-8月',
+            'language': '荷兰语（弗拉芒）/ 法语 / 英语',
+            'etiquette': [
+                '比利时分荷语区和法语区，注意对方所在区域',
+                '商务偏保守和正式，比法国人更务实',
+                '决策偏谨慎，需要耐心跟进',
+            ],
+            'taboos': [
+                '别问客户是弗拉芒人还是瓦隆人（敏感）',
+                '避免把比利时和法国混为一谈',
+            ],
+            'holidays': '7/21：国庆日 | 7-8月：各地暑假',
+        },
+        'colombia': {
+            'weekend': '周六日',
+            'best_days': '周二至周四',
+            'avoid_days': '周一（很多人周末连休）、周五下午、12月',
+            'language': '西班牙语 / 英语（商务英语有限）',
+            'etiquette': [
+                '哥伦比亚人关系导向，先建立信任',
+                '邮件用西班牙语开头更有诚意',
+                '决策偏慢，不要催太紧',
+            ],
+            'taboos': [
+                '避免讨论毒品/游击队等敏感话题',
+                '12月基本在过节，效率低',
+            ],
+            'holidays': '12月：圣诞+新年长假',
+        },
+        'korea': {
+            'weekend': '周六日',
+            'best_days': '周二至周四',
+            'avoid_days': '春节/中秋前后各一周',
+            'language': '韩语 / 英语（书面沟通更清晰）',
+            'etiquette': [
+                '韩国人重视等级和尊重，邮件语气要礼貌正式',
+                '决策通常需要上报，不会当场拍板',
+                '关系（인맥）很重要，但初次邮件保持专业即可',
+                '避免在邮件中过于直接批评或否定',
+            ],
+            'taboos': [
+                '避免谈日本殖民历史',
+                '不要在第一次沟通中催促决策',
+                '对长辈/上级用敬语，邮件中注意尊重语气',
+            ],
+            'holidays': '1-2月：Seollal（春节）| 9-10月：Chuseok（中秋）| 日期每年变动',
+        },
+        'vietnam': {
+            'weekend': '周六日',
+            'best_days': '周二至周六上午',
+            'avoid_days': '春节（Tet）前后两周',
+            'language': '越南语 / 英语',
+            'etiquette': [
+                '越南人关系导向，先建立信任比较好谈',
+                '春节（Tet）是最大节日，前后两周不办公',
+                '报价可以留余地，越南喜欢友好协商',
+            ],
+            'taboos': [
+                '避免谈中越历史问题',
+                '不要公开批评越南政府',
+                '送礼要注意分寸，避免让人觉得是贿赂',
+            ],
+            'holidays': '1-2月：Tet（春节，最重要节日）| 4/30：统一日 | 5/1：劳动节',
+        },
+    }
+
+    _CN_COUNTRY_MAP = {
+        '德国': 'germany', '法国': 'france', '意大利': 'italy',
+        '西班牙': 'spain', '英国': 'uk', '荷兰': 'netherlands',
+        '比利时': 'belgium', '瑞典': 'sweden', '挪威': 'norway',
+        '芬兰': 'finland', '丹麦': 'denmark', '波兰': 'poland',
+        '捷克': 'czech', '奥地利': 'austria', '瑞士': 'switzerland',
+        '美国': 'usa', '加拿大': 'canada', '墨西哥': 'mexico',
+        '澳大利亚': 'australia', '日本': 'japan', '韩国': 'korea',
+        '印度': 'india', '巴西': 'brazil', '土耳其': 'turkey',
+        '俄罗斯': 'russia', '葡萄牙': 'portugal', '哥伦比亚': 'colombia',
+        '越南': 'vietnam',
+    }
+
+    def get_cultural_advice(self, country):
+        if not country:
+            return None
+        cl = country.lower().strip()
+        # 直接匹配英文键
+        for key in self._CULTURE_GUIDE:
+            if key in cl or cl in key:
+                return self._CULTURE_GUIDE[key]
+        # 匹配中文名
+        for cn, en in self._CN_COUNTRY_MAP.items():
+            if cn in cl or cl in cn:
+                return self._CULTURE_GUIDE.get(en)
         return None
 
     @staticmethod
@@ -832,8 +1246,6 @@ C级客户标准：
                 d = self._add_working_days(last_contact, 7)
                 return d, f"客户标注为「{dev_status}」，按首次跟进（第1轮），7个工作日后"
             # 真的没发过
-            d = self._add_working_days(today, 1)
-            return d, "尚未发送开发信，建议尽快发送"
             d = self._add_working_days(today, 1)
             return d, "尚未发送开发信，建议尽快发送"
         elif email_count == 1:
@@ -982,19 +1394,156 @@ C级客户标准：
         except Exception as e:
             return False, str(e)
 
-    def add_knowledge(self, category, title, content):
+    # ===== 团队成员管理 =====
+    def get_team_members(self):
+        try:
+            conn = self.get_connection()
+            df = pd.read_sql("SELECT * FROM team_members ORDER BY id", conn)
+            conn.close()
+            return [row['name'] for _, row in df.iterrows()], None
+        except Exception as e:
+            return [], str(e)
+
+    def add_team_member(self, name):
         try:
             conn = self.get_connection()
             cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO knowledge_base (category, title, content)
-                VALUES (?, ?, ?)
-            """, (category, title, content))
+            cursor.execute("INSERT INTO team_members (name) VALUES (?)", (name.strip(),))
             conn.commit()
             conn.close()
             return True, None
         except Exception as e:
             return False, str(e)
+
+    def remove_team_member(self, name):
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM team_members WHERE name = ?", (name,))
+            conn.commit()
+            conn.close()
+            return True, None
+        except Exception as e:
+            return False, str(e)
+
+    # ===== 撞客户保护名单 =====
+    def add_co_worker_customer(self, co_worker_name, company_name='', contact_person='', email='', notes=''):
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO co_worker_customers (co_worker_name, company_name, contact_person, email, notes)
+                VALUES (?, ?, ?, ?, ?)
+            """, (co_worker_name.strip(), company_name.strip(), contact_person.strip(), email.strip(), notes))
+            conn.commit()
+            conn.close()
+            return True, None
+        except Exception as e:
+            return False, str(e)
+
+    def get_co_worker_customers(self):
+        try:
+            conn = self.get_connection()
+            df = pd.read_sql("SELECT * FROM co_worker_customers ORDER BY co_worker_name, id", conn)
+            conn.close()
+            return df, None
+        except Exception as e:
+            return pd.DataFrame(), str(e)
+
+    def delete_co_worker_customer(self, entry_id):
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM co_worker_customers WHERE id = ?", (entry_id,))
+            conn.commit()
+            conn.close()
+            return True, None
+        except Exception as e:
+            return False, str(e)
+
+    def check_protection_conflict(self, company_name, contact_person='', email=''):
+        """检查新客户是否与团队已有客户撞车，返回所有匹配的警告"""
+        if not company_name and not contact_person:
+            return []
+        df, _ = self.get_co_worker_customers()
+        if df.empty:
+            return []
+
+        warnings = []
+        c_name = str(company_name or '').strip().lower()
+        c_person = str(contact_person or '').strip().lower()
+        c_email = str(email or '').strip().lower()
+
+        for _, row in df.iterrows():
+            level = None
+            msg = ''
+
+            r_name = str(row.get('company_name', '') or '').strip().lower()
+            r_person = str(row.get('contact_person', '') or '').strip().lower()
+            r_email = str(row.get('email', '') or '').strip().lower()
+            coworker = row['co_worker_name']
+
+            if c_name and r_name and c_name == r_name:
+                level = 'danger'
+                msg = f'🔴 公司名与 {coworker} 的客户撞车！该公司已在 {coworker} 名下'
+            elif c_person and r_person and c_person == r_person:
+                level = 'danger'
+                msg = f'🔴 联系人「{contact_person}」与 {coworker} 的客户联系人一致！'
+            elif c_email and r_email and c_email == r_email:
+                level = 'danger'
+                msg = f'🔴 邮箱与 {coworker} 的客户邮箱一致！'
+
+            if level:
+                warnings.append({'level': level, 'message': msg, 'co_worker': coworker})
+
+        return warnings
+
+    # ===== 导入时获取 sheet 列表 =====
+    def get_excel_sheet_names(self, file_obj):
+        """读取 Excel 文件的所有 sheet 名称"""
+        try:
+            xls = pd.ExcelFile(file_obj)
+            return xls.sheet_names, None
+        except Exception as e:
+            return [], str(e)
+
+    def batch_import_sheet(self, xls, sheet_name):
+        """导入指定 sheet，xls 可以是 pd.ExcelFile 对象或文件路径"""
+        try:
+            df = pd.read_excel(xls, sheet_name=sheet_name)
+        except Exception as e:
+            return 0, 0, 0, [], str(e)
+        # 交给原有的导入逻辑
+        return self._batch_import_with_protection(df)
+
+    def _batch_import_with_protection(self, df):
+        """导入 DataFrame 并检查每个客户的撞客户风险"""
+        # 先正常导入
+        s, d, e, err = self.batch_import_customers(df)
+        # 再对导入的每行跑保护检查
+        all_warnings = []
+        for _, row in df.iterrows():
+            company = str(row.get('company_name', row.get('公司', '')) or '')
+            contact = ''
+            email = ''
+            # 尝试从原始列中提取
+            for c_col in ['contact_person', '联系人']:
+                if c_col in df.columns:
+                    contact = str(row.get(c_col, '') or '')
+                    break
+            for e_col in ['email', '联系方式']:
+                if e_col in df.columns:
+                    raw = str(row.get(e_col, '') or '')
+                    if '@' in raw:
+                        email = raw
+                    break
+            if company.strip() or contact.strip() or email.strip():
+                try:
+                    warns = self.check_protection_conflict(company, contact, email)
+                    all_warnings.extend(warns)
+                except Exception:
+                    pass
+        return s, d, e, all_warnings, err
 
     def get_all_knowledge(self):
         try:

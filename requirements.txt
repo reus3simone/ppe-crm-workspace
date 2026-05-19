@@ -9,7 +9,4 @@ openpyxl>=3.1.0
 # 日期时间
 python-dateutil>=2.8.2
 
-# AI邮件生成
-anthropic>=0.39.0
-
 # 数据库（SQLite，Python内置）
