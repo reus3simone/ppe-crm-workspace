@@ -120,7 +120,10 @@ def render_home_page():
 
         is_secondary = False
         if not is_urgent:
-            if next_date and 0 < (next_date - today).days <= 3:
+            # 如果手动设了未来的跟进日期，以手动为准，SOP 不干预
+            if manual_due and manual_due > today:
+                pass
+            elif next_date and 0 < (next_date - today).days <= 3:
                 is_secondary = True
                 reason = f"{next_msg}（{(next_date - today).days}天后）"
             elif health['status'] == 'cooling':
