@@ -22,3 +22,6 @@ Thumbs.db
 
 # 日志文件
 *.log
+
+# 自动备份文件（assets 目录下的 xlsx 备份）
+assets/*.xlsx
