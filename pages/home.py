@@ -54,22 +54,33 @@ def render_home_page():
             ("📦 样品阶段", "样品阶段", "#ede9fe", "#7c3aed"),
             ("✅ 已成交", "已成交", "#fce7f3", "#be185d"),
         ]
-        cols = st.columns(len(stages))
-        for i, (label, stage_key, bg, color) in enumerate(stages):
+        stage_keys = ["初次开发", "已发开发信", "已报价", "样品阶段", "已成交"]
+        stage_labels = ["🆕 初次开发", "📧 已发开发信", "💬 已报价", "📦 样品阶段", "✅ 已成交"]
+        stage_colors = ["#3b5fd9", "#b45309", "#15803d", "#7c3aed", "#be185d"]
+        stage_bgs = ["#eef2ff", "#fef9e7", "#e6f7ec", "#ede9fe", "#fce7f3"]
+
+        cols = st.columns(5)
+        for i in range(5):
             with cols[i]:
-                if stage_key == "已发开发信":
+                sk = stage_keys[i]
+                if sk == "已发开发信":
                     cnt = df[df['development_status'].str.contains('已发', na=False) &
                               df['development_status'].str.contains('开发信', na=False)].shape[0]
                 else:
-                    cnt = df[df['development_status'] == stage_key].shape[0]
+                    cnt = df[df['development_status'] == sk].shape[0]
                 st.markdown(f"""
-                <div style="background:{bg};padding:8px;border-radius:8px;text-align:center;
-                            font-size:0.75rem;color:{color};cursor:pointer;
-                            border:1px solid {color}22;">
-                    <div style="font-weight:700;font-size:1.3rem;">{cnt}</div>
-                    <div>{label}</div>
+                <div style="background:{stage_bgs[i]};padding:4px 8px;border-radius:8px;text-align:center;
+                            border:1px solid {stage_colors[i]}22;margin-bottom:4px;">
+                    <div style="font-weight:700;font-size:1.3rem;color:{stage_colors[i]};">{cnt}</div>
+                    <div style="font-size:0.7rem;color:{stage_colors[i]};">{stage_labels[i]}</div>
                 </div>
                 """, unsafe_allow_html=True)
+                if st.button("查看", key=f"gostage_{i}", use_container_width=True,
+                             help=f"去客户工作台查看{sk}客户"):
+                    st.session_state['current_page'] = "客户工作台"
+                    for k in ['ws_selected_id', 'ws_show_import', 'ws_new_customer', 'ws_edit_id']:
+                        st.session_state.pop(k, None)
+                    st.rerun()
 
     if df.empty:
         st.info("暂无客户数据，去「客户工作台」添加第一个客户吧！")
