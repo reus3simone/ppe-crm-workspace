@@ -38,6 +38,14 @@ def render_workspace():
         render_new_customer_form()
         return
 
+    # ── 编辑客户 ──
+    edit_id = st.session_state.get('ws_edit_id')
+    if edit_id:
+        edit_customer, err = db.get_customer(edit_id)
+        if edit_customer:
+            render_edit_form(edit_customer)
+            return
+
     # ── 加载数据 ──
     df, err = db.get_all_customers_with_stats()
     if err:
@@ -339,10 +347,6 @@ def render_info_tab(customer):
         st.session_state['ws_edit_id'] = cid
         st.rerun()
 
-    # 编辑弹窗
-    if st.session_state.get('ws_edit_id') == cid:
-        render_edit_form(customer)
-
 
 def render_edit_form(customer):
     cid = customer['id']
@@ -362,17 +366,17 @@ def render_edit_form(customer):
             grade = st.selectbox("等级", ["A", "B", "C"],
                                  index=['A', 'B', 'C'].index(
                                      customer.get('customer_grade', 'C')
-                                     if customer.get('customer_grade', 'C') in ['A', 'B', 'C'] else 2))
+                                     if customer.get('customer_grade', 'C') in ['A', 'B', 'C'] else "C"))
             status = st.selectbox("跟进状态", ["正在跟进", "备选", "拒绝"],
                                   index=["正在跟进", "备选", "拒绝"].index(
                                       customer.get('status', '正在跟进')
-                                      if customer.get('status', '') in ["正在跟进", "备选", "拒绝"] else 0))
+                                      if customer.get('status', '') in ["正在跟进", "备选", "拒绝"] else "正在跟进"))
             dev_status = st.selectbox("开发阶段",
                                       ["初次开发", "已发开发信", "已报价", "样品阶段", "已成交"],
                                       index=["初次开发", "已发开发信", "已报价", "样品阶段", "已成交"].index(
                                           customer.get('development_status', '初次开发')
                                           if customer.get('development_status', '') in [
-                                              "初次开发", "已发开发信", "已报价", "样品阶段", "已成交"] else 0))
+                                              "初次开发", "已发开发信", "已报价", "样品阶段", "已成交"] else "初次开发"))
             products = st.text_input("主营产品", customer.get('products', ''))
             website = st.text_input("官网", customer.get('website', ''))
             linkedin = st.text_input("LinkedIn", customer.get('linkedin', ''))
@@ -385,7 +389,7 @@ def render_edit_form(customer):
                                          index=["未寄出", "已寄出", "已收到", "已反馈"].index(
                                              customer.get('sample_status', '未寄出')
                                              if customer.get('sample_status', '') in [
-                                                 "未寄出", "已寄出", "已收到", "已反馈"] else 0))
+                                                 "未寄出", "已寄出", "已收到", "已反馈"] else "未寄出"))
         with sc2:
             sample_date = st.text_input("寄出日期", customer.get('sample_send_date', ''))
         with sc3:
