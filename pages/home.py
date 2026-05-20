@@ -45,6 +45,32 @@ def render_home_page():
     </div>
     """, unsafe_allow_html=True)
 
+    # ── 开发阶段分布 ──
+    if not df.empty:
+        stages = [
+            ("🆕 初次开发", "初次开发", "#eef2ff", "#3b5fd9"),
+            ("📧 已发开发信", "已发开发信", "#fef9e7", "#b45309"),
+            ("💬 已报价", "已报价", "#e6f7ec", "#15803d"),
+            ("📦 样品阶段", "样品阶段", "#ede9fe", "#7c3aed"),
+            ("✅ 已成交", "已成交", "#fce7f3", "#be185d"),
+        ]
+        cols = st.columns(len(stages))
+        for i, (label, stage_key, bg, color) in enumerate(stages):
+            with cols[i]:
+                if stage_key == "已发开发信":
+                    cnt = df[df['development_status'].str.contains('已发', na=False) &
+                              df['development_status'].str.contains('开发信', na=False)].shape[0]
+                else:
+                    cnt = df[df['development_status'] == stage_key].shape[0]
+                st.markdown(f"""
+                <div style="background:{bg};padding:8px;border-radius:8px;text-align:center;
+                            font-size:0.75rem;color:{color};cursor:pointer;
+                            border:1px solid {color}22;">
+                    <div style="font-weight:700;font-size:1.3rem;">{cnt}</div>
+                    <div>{label}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
     if df.empty:
         st.info("暂无客户数据，去「客户工作台」添加第一个客户吧！")
         if st.button("👥 去客户工作台"):

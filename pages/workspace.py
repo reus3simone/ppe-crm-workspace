@@ -209,6 +209,7 @@ def render_new_customer_form():
             products = st.text_input("主营产品")
             website = st.text_input("官网")
 
+        follow_up_date = st.date_input("下次跟进日期", value=datetime.now().date())
         notes = st.text_area("备注")
         submitted = st.form_submit_button("💾 保存", type="primary")
 
@@ -223,6 +224,7 @@ def render_new_customer_form():
                 'customer_grade': grade, 'status': status,
                 'source': source, 'products': products,
                 'website': website, 'notes': notes,
+                'follow_up_date': follow_up_date.strftime('%Y-%m-%d'),
             }
             # 保护检查
             warns = db.check_protection_conflict(company, contact, email)
@@ -330,6 +332,12 @@ def render_info_tab(customer):
                         f"<span style='color:#64748b;'>{label}：</span>"
                         f"<span style='color:#1e293b;'>{html.escape(str(val))}</span></div>",
                         unsafe_allow_html=True)
+        fud = customer.get('follow_up_date', '')
+        if fud:
+            st.markdown(f"<div style='font-size:0.85rem;margin-bottom:4px;'>"
+                        f"<span style='color:#64748b;'>下次跟进：</span>"
+                        f"<span style='color:#1e293b;'>{fud}</span></div>",
+                        unsafe_allow_html=True)
 
         # 样品信息
         sample = customer.get('sample_status', '未寄出')
@@ -382,6 +390,15 @@ def render_edit_form(customer):
             linkedin = st.text_input("LinkedIn", customer.get('linkedin', ''))
             source = st.text_input("来源", customer.get('source', ''))
 
+        st.markdown("**跟进计划**")
+        fc1, fc2 = st.columns(2)
+        with fc1:
+            follow_up_date = st.date_input("下次跟进日期",
+                value=pd.to_datetime(customer['follow_up_date']).date()
+                if customer.get('follow_up_date') else datetime.now().date())
+        with fc2:
+            st.caption("设定后首页会提醒你按时跟进")
+
         st.markdown("**样品信息**")
         sc1, sc2, sc3 = st.columns(3)
         with sc1:
@@ -407,6 +424,7 @@ def render_edit_form(customer):
                 'status': status, 'development_status': dev_status,
                 'products': products, 'website': website, 'linkedin': linkedin,
                 'source': source,
+                'follow_up_date': follow_up_date.strftime('%Y-%m-%d'),
                 'sample_status': sample_status,
                 'sample_send_date': sample_date,
                 'sample_tracking_number': tracking,
