@@ -430,8 +430,8 @@ C级客户标准：
             dev_status = str(clean_data.get('development_status', '')).strip()
             is_sent = (
                 dev_status in ('已报价', '样品阶段', '已成交')
-                or '已发' in dev_status and '开发信' in dev_status
-                or '已发' in dev_status and '邮件' in dev_status
+                or '已发' in dev_status
+                or '已加whatsapp' in dev_status
             )
             if is_sent:
                 cursor.execute("""
@@ -1233,8 +1233,8 @@ C级客户标准：
             dev_status = str(customer.get('development_status', '')).strip()
             is_sent = (
                 dev_status in ('已报价', '样品阶段', '已成交')
-                or '已发' in dev_status and '开发信' in dev_status
-                or '已发' in dev_status and '邮件' in dev_status
+                or '已发' in dev_status
+                or '已加whatsapp' in dev_status
             )
             if is_sent:
                 lfd = customer.get('last_follow_up_date')
