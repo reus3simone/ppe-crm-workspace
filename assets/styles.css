@@ -1,6 +1,6 @@
-/* ========== 全局背景 ========== */
+/* ========== 全局 ========== */
 .stApp {
-    background: #f3f6fa;
+    background: #f0f2f6;
 }
 
 /* ========== 侧边栏 ========== */
@@ -19,16 +19,18 @@
 }
 
 /* ========== 标题 ========== */
-h1 { color: #0f172a !important; font-weight: 700 !important; }
+h1 { color: #0f172a !important; font-weight: 700 !important; letter-spacing: -0.02em; }
 h2 { color: #1e293b !important; font-weight: 600 !important; }
-h3 { color: #334155 !important; font-weight: 600 !important; }
+h3 { color: #1e293b !important; font-weight: 600 !important; font-size: 1.1rem !important; }
+h5 { color: #1e293b; font-weight: 600; font-size: 0.85rem; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.03em; }
 
-/* ========== 按钮 ========== */
+/* ========== 按钮通用 ========== */
 .stButton > button {
     border-radius: 8px;
     font-weight: 500;
     border: none;
     transition: all 0.2s;
+    font-size: 0.8rem !important;
 }
 
 .stButton > button:hover {
@@ -36,41 +38,57 @@ h3 { color: #334155 !important; font-weight: 600 !important; }
     box-shadow: 0 4px 12px rgba(59,130,246,0.25);
 }
 
-/* 主按钮 - 蓝色 */
+/* 默认按钮（蓝色主按钮） */
 .stButton > button:not([kind]) {
     background: #4f8fff;
     color: white;
+    border: none;
+}
+.stButton > button:not([kind]):hover {
+    background: #3b7ae8;
+    box-shadow: 0 4px 12px rgba(59,130,246,0.3);
 }
 
-/* secondary - 灰色边框 */
+/* secondary 按钮 */
 .stButton > button[kind="secondary"] {
     background: white;
-    color: #475569;
-    border: 1px solid #d1d5db;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 4px 14px;
+    font-size: 0.8rem !important;
+    transition: all 0.15s;
 }
 
 .stButton > button[kind="secondary"]:hover {
-    background: #f8fafc;
-    border-color: #94a3b8;
+    border-color: #4f8fff;
+    color: #4f8fff;
+    background: #f8faff;
+    transform: none;
+    box-shadow: 0 2px 8px rgba(79,143,255,0.12);
 }
 
-/* primary 用作危险按钮 */
+/* primary 用作危险/删除按钮 */
 .stButton > button[kind="primary"] {
     background: white;
     color: #ef4444 !important;
     border: 1px solid #fecaca;
+    font-size: 0.8rem !important;
+    border-radius: 8px;
 }
 
 .stButton > button[kind="primary"]:hover {
     background: #fef2f2;
+    border-color: #fca5a5;
     box-shadow: 0 4px 12px rgba(239,68,68,0.15);
 }
 
 /* ========== 输入框 ========== */
 .stTextInput input, .stTextArea textarea, .stSelectbox [data-baseweb="select"] {
     border-radius: 8px !important;
-    border: 1px solid #dde1e7 !important;
+    border: 1px solid #e2e8f0 !important;
     background: white !important;
+    font-size: 0.85rem !important;
 }
 
 .stTextInput input:focus, .stTextArea textarea:focus {
@@ -99,19 +117,93 @@ div[data-testid="stMetric"] [data-testid="stMetricValue"] {
     font-weight: 700;
 }
 
-/* ========== 客户卡片 ========== */
-.customer-card {
-    background: white;
-    padding: 1rem 1.25rem;
+/* ========== 客户卡片（工作台列表） ========== */
+.ws-card, .ws-card-selected {
+    padding: 0.7rem 0.9rem;
     border-radius: 10px;
-    border: 1px solid #eef1f5;
-    margin-bottom: 0.6rem;
+    margin-bottom: 6px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s ease;
+    position: relative;
+}
+.ws-card {
+    background: white;
+    border: 1px solid #edf2f7;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+.ws-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 20%;
+    height: 60%;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: transparent;
     transition: all 0.2s;
 }
-
-.customer-card:hover {
+.ws-card:hover {
     border-color: #4f8fff;
-    box-shadow: 0 4px 16px rgba(79,143,255,0.1);
+    box-shadow: 0 3px 12px rgba(79,143,255,0.1);
+    transform: translateY(-1px);
+}
+.ws-card:hover::before {
+    background: #4f8fff;
+}
+.ws-card-selected {
+    background: #eef2ff;
+    border: 2px solid #4f8fff;
+    box-shadow: 0 3px 12px rgba(79,143,255,0.15);
+}
+.ws-card-name {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #1e293b;
+}
+.ws-card-country {
+    margin-left: 6px;
+    font-size: 0.65rem;
+    color: #94a3b8;
+}
+.ws-card-count {
+    font-size: 0.65rem;
+    color: #94a3b8;
+    background: #f8fafc;
+    padding: 1px 6px;
+    border-radius: 6px;
+}
+
+/* ========== 卡片容器（详情页） ========== */
+.detail-section {
+    background: white;
+    padding: 1.25rem 1.5rem;
+    border-radius: 12px;
+    border: 1px solid #edf2f7;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+/* ========== 详情信息网格 ========== */
+.info-row {
+    display: flex;
+    padding: 6px 0;
+    border-bottom: 1px solid #f8fafc;
+    font-size: 0.85rem;
+}
+.info-row:last-child {
+    border-bottom: none;
+}
+.info-label {
+    color: #94a3b8;
+    width: 80px;
+    flex-shrink: 0;
+}
+.info-value {
+    color: #1e293b;
+    font-weight: 500;
 }
 
 /* ========== 等级/状态标签 ========== */
@@ -122,15 +214,17 @@ div[data-testid="stMetric"] [data-testid="stMetricValue"] {
     border-radius: 12px;
     font-size: 0.75rem;
     font-weight: 600;
+    display: inline-block;
 }
 
 .grade-b {
     background: #eef2ff;
-    color: #3b5fd9 !important;
+    color: #4f8fff !important;
     padding: 2px 10px;
     border-radius: 12px;
     font-size: 0.75rem;
     font-weight: 600;
+    display: inline-block;
 }
 
 .grade-c {
@@ -140,6 +234,7 @@ div[data-testid="stMetric"] [data-testid="stMetricValue"] {
     border-radius: 12px;
     font-size: 0.75rem;
     font-weight: 600;
+    display: inline-block;
 }
 
 .status-active {
@@ -149,6 +244,7 @@ div[data-testid="stMetric"] [data-testid="stMetricValue"] {
     border-radius: 12px;
     font-size: 0.75rem;
     font-weight: 600;
+    display: inline-block;
 }
 
 .status-pending {
@@ -158,6 +254,7 @@ div[data-testid="stMetric"] [data-testid="stMetricValue"] {
     border-radius: 12px;
     font-size: 0.75rem;
     font-weight: 600;
+    display: inline-block;
 }
 
 .status-rejected {
@@ -167,6 +264,7 @@ div[data-testid="stMetric"] [data-testid="stMetricValue"] {
     border-radius: 12px;
     font-size: 0.75rem;
     font-weight: 600;
+    display: inline-block;
 }
 
 /* ========== 时间轴 ========== */
@@ -174,38 +272,39 @@ div[data-testid="stMetric"] [data-testid="stMetricValue"] {
     position: relative;
     padding-left: 2rem;
     padding-bottom: 1.5rem;
-    border-left: 2px solid #cbd5e1;
+    border-left: 2px solid #e2e8f0;
 }
 
 .timeline-item:last-child { border-left: none; }
 
 .timeline-dot {
     position: absolute;
-    left: -0.5rem;
-    top: 0;
-    width: 1rem;
-    height: 1rem;
+    left: -0.45rem;
+    top: 0.15rem;
+    width: 0.75rem;
+    height: 0.75rem;
     border-radius: 50%;
     background: #4f8fff;
-    border: 3px solid white;
+    border: 2px solid white;
     box-shadow: 0 0 0 2px #4f8fff;
 }
 
 .timeline-date {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: #94a3b8;
     font-weight: 500;
 }
 
 .timeline-content {
-    background: #f8fafc;
+    background: white;
     padding: 0.75rem 1rem;
     border-radius: 8px;
-    border: 1px solid #eef1f5;
-    margin-top: 0.25rem;
+    border: 1px solid #edf2f7;
+    margin-top: 0.3rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
 }
 
-/* ========== 统计卡片(首页自定义) ========== */
+/* ========== 统计卡片（首页） ========== */
 .stat-card {
     background: white;
     padding: 1.5rem;
@@ -232,8 +331,13 @@ div[data-testid="stMetric"] [data-testid="stMetricValue"] {
 /* ========== Expander ========== */
 [data-testid="stExpander"] {
     background: white;
-    border: 1px solid #eef1f5 !important;
+    border: 1px solid #edf2f7 !important;
     border-radius: 10px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+[data-testid="stExpander"] summary {
+    font-weight: 500;
+    font-size: 0.85rem;
 }
 
 /* ========== Form ========== */
@@ -241,5 +345,25 @@ div[data-testid="stMetric"] [data-testid="stMetricValue"] {
     background: white;
     padding: 1.5rem;
     border-radius: 12px;
-    border: 1px solid #eef1f5;
+    border: 1px solid #edf2f7;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+/* ========== Tabs ========== */
+[data-testid="stTabs"] button {
+    font-size: 0.85rem !important;
+    font-weight: 500;
+}
+[data-testid="stTabs"] button[aria-selected="true"] {
+    color: #4f8fff !important;
+    font-weight: 600;
+}
+
+/* ========== Pagination ========== */
+.pagination-text {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.8rem;
+    padding: 6px 0;
+    font-weight: 500;
 }

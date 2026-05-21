@@ -53,7 +53,7 @@ class Database:
                     country TEXT,
                     linkedin TEXT,
                     website TEXT,
-                    customer_grade TEXT DEFAULT 'C',
+                    customer_grade TEXT DEFAULT 'B',
                     status TEXT DEFAULT '备选',
                     industry TEXT,
                     products TEXT,
@@ -70,8 +70,7 @@ class Database:
                     owner_department TEXT DEFAULT '外贸部',
                     development_status TEXT DEFAULT '初次开发',
                     source TEXT DEFAULT 'Google',
-                    last_follow_up_date DATE,
-                    auto_score INTEGER DEFAULT 0
+                    last_follow_up_date DATE
                 )
             """)
 
@@ -82,8 +81,7 @@ class Database:
                 ('owner_department', 'TEXT', '外贸部'),
                 ('development_status', 'TEXT', '初次开发'),
                 ('source', 'TEXT', 'Google'),
-                ('last_follow_up_date', 'DATE', None),
-                ('auto_score', 'INTEGER', 0)
+                ('last_follow_up_date', 'DATE', None)
             ]
             for col, typ, default in new_columns:
                 if col not in existing_columns:
@@ -220,29 +218,7 @@ C级客户标准：
 
             conn.commit()
             conn.close()
-            self._init_all_auto_scores()
         except Exception as e:
-            pass
-
-
-    def _init_all_auto_scores(self):
-        try:
-            conn = self.get_connection()
-            df = pd.read_sql("SELECT * FROM customers", conn)
-            for _, row in df.iterrows():
-                row_dict = dict(row)
-                score = utils.calculate_auto_score(row_dict)
-                existing_grade = str(row_dict.get('customer_grade', '')).strip()
-                if existing_grade and existing_grade not in ('A', 'B', 'C', ''):
-                    conn.execute("UPDATE customers SET auto_score = ? WHERE id = ?", (score, row['id']))
-                elif not existing_grade or existing_grade in ('A', 'B', 'C'):
-                    grade = utils.get_customer_grade_by_score(score)
-                    conn.execute("UPDATE customers SET auto_score = ?, customer_grade = ? WHERE id = ?", (score, grade, row['id']))
-                else:
-                    conn.execute("UPDATE customers SET auto_score = ? WHERE id = ?", (score, row['id']))
-            conn.commit()
-            conn.close()
-        except Exception:
             pass
 
     def check_customer_conflict(self, customer_data, exclude_id=None):
@@ -367,15 +343,10 @@ C级客户标准：
             fixed_fields = [
                 'company_name', 'contact_person', 'email', 'phone', 'whatsapp',
                 'country', 'website', 'linkedin', 'industry', 'products',
-                'source', 'development_status', 'notes', 'auto_score',
+                'source', 'development_status', 'notes',
                 'customer_grade', 'last_follow_up_date', 'assigned_to', 'status'
             ]
 
-            score = utils.calculate_auto_score(customer_data)
-            customer_data['auto_score'] = score
-            manual_grade = customer_data.get('customer_grade', '').strip()
-            if manual_grade not in ('A', 'B', 'C'):
-                customer_data['customer_grade'] = utils.get_customer_grade_by_score(score)
             if 'last_follow_up_date' not in customer_data or not customer_data.get('last_follow_up_date'):
                 customer_data['last_follow_up_date'] = datetime.now().strftime('%Y-%m-%d')
             customer_data.setdefault('assigned_to', 'Elsa')
@@ -413,7 +384,7 @@ C级客户标准：
             cursor.execute("""
                 INSERT INTO follow_up_timeline (customer_id, event_type, event_content)
                 VALUES (?, ?, ?)
-            """, (customer_id, "创建客户", f"成功新建客户档案 | 自动评分：{score}分 | 等级：{clean_data['customer_grade']}级"))
+            """, (customer_id, "创建客户", f"成功新建客户档案 | 等级：{clean_data['customer_grade']}级"))
 
             if conflicts:
                 conflict_msg = "; ".join([c['message'] for c in conflicts])
@@ -528,15 +499,6 @@ C级客户标准：
             conflict_level, conflicts = self.check_customer_conflict(customer_data, exclude_id=customer_id)
             if conflict_level == 3:
                 return False, conflicts[0]['message']
-
-            existing, _ = self.get_customer(customer_id)
-            if existing:
-                merged = {**existing, **customer_data}
-                score = utils.calculate_auto_score(merged)
-                customer_data['auto_score'] = score
-                grade_val = customer_data.get('customer_grade', '').strip()
-                if grade_val not in ('A', 'B', 'C'):
-                    customer_data['customer_grade'] = utils.get_customer_grade_by_score(score)
 
             customer_data['updated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             conn = self.get_connection()
@@ -1249,7 +1211,6 @@ C级客户标准：
             if restored_tpls:
                 parts.append(f"模板 {restored_tpls} 条")
 
-            self._init_all_auto_scores()
             return True, f"恢复完成：{', '.join(parts)}"
         except Exception as e:
             try:

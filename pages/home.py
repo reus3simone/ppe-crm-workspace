@@ -23,6 +23,8 @@ def render_home_page():
     # 概览行
     total = len(df)
     a_count = len(df[df['customer_grade'] == 'A']) if not df.empty else 0
+    b_count = len(df[df['customer_grade'] == 'B']) if not df.empty else 0
+    c_count = len(df[df['customer_grade'] == 'C']) if not df.empty else 0
     active = len(df[df['development_status'].isin(['已报价', '样品阶段'])]) if not df.empty else 0
 
     overdue_count = 0
@@ -36,14 +38,7 @@ def render_home_page():
                 return False
         overdue_count = df[df['follow_up_date'].apply(_is_overdue)].shape[0]
 
-    st.markdown(f"""
-    <div style="background:#f8fafc;padding:0.5rem 1rem;border-radius:8px;border:1px solid #eef1f5;
-                font-size:0.85rem;color:#475569;margin-bottom:1rem;">
-        总客户 <strong>{total}</strong> ｜ A级 <strong>{a_count}</strong> ｜
-        推进中 <strong>{active}</strong> ｜
-        <span style="color:#dc2626;">逾期 <strong>{overdue_count}</strong></span>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f"""<div style="background:#f8fafc;padding:0.5rem 1rem;border-radius:8px;border:1px solid #eef1f5;font-size:0.85rem;color:#475569;margin-bottom:1rem;">总客户 <strong>{total}</strong> ｜ A级 <strong>{a_count}</strong> ｜ B级 <strong>{b_count}</strong> ｜ C级 <strong>{c_count}</strong> ｜推进中 <strong>{active}</strong> ｜<span style="color:#dc2626;">逾期 <strong>{overdue_count}</strong></span></div>""", unsafe_allow_html=True)
 
     # ── 开发阶段分布 ──
     if not df.empty:
@@ -68,13 +63,7 @@ def render_home_page():
                               df['development_status'].str.contains('开发信', na=False)].shape[0]
                 else:
                     cnt = df[df['development_status'] == sk].shape[0]
-                st.markdown(f"""
-                <div style="background:{stage_bgs[i]};padding:4px 8px;border-radius:8px;text-align:center;
-                            border:1px solid {stage_colors[i]}22;margin-bottom:4px;">
-                    <div style="font-weight:700;font-size:1.3rem;color:{stage_colors[i]};">{cnt}</div>
-                    <div style="font-size:0.7rem;color:{stage_colors[i]};">{stage_labels[i]}</div>
-                </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f"""<div style="background:{stage_bgs[i]};padding:4px 8px;border-radius:8px;text-align:center;border:1px solid {stage_colors[i]}22;margin-bottom:4px;"><div style="font-weight:700;font-size:1.3rem;color:{stage_colors[i]};">{cnt}</div><div style="font-size:0.7rem;color:{stage_colors[i]};">{stage_labels[i]}</div></div>""", unsafe_allow_html=True)
                 if st.button("查看", key=f"gostage_{i}", use_container_width=True,
                              help=f"去客户工作台查看{sk}客户"):
                     st.session_state['current_page'] = "客户工作台"
@@ -182,31 +171,12 @@ def render_home_page():
 
     # ===== 🔥 今天必须处理 =====
     if urgent_list:
-        st.markdown(f"""
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-            <span style="font-size:1.2rem;">🔥</span>
-            <span style="font-weight:700;font-size:1.05rem;color:#1e293b;">今天必须处理</span>
-            <span style="background:#fef2f2;color:#dc2626;padding:0 10px;border-radius:10px;font-size:0.75rem;font-weight:600;">{len(urgent_list)}</span>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"""<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-size:1.2rem;">🔥</span><span style="font-weight:700;font-size:1.05rem;color:#1e293b;">今天必须处理</span><span style="background:#fef2f2;color:#dc2626;padding:0 10px;border-radius:10px;font-size:0.75rem;font-weight:600;">{len(urgent_list)}</span></div>""", unsafe_allow_html=True)
 
         for c in urgent_list:
             bg = "#fef2f2" if "逾期" in c['reason'] else "#fef9e7"
             border = "#ef4444" if "逾期" in c['reason'] else "#f59e0b"
-            st.markdown(f"""
-            <div style="background:{bg};padding:0.6rem 1rem;border-radius:8px;
-                        border-left:4px solid {border};margin-bottom:4px;
-                        display:flex;justify-content:space-between;align-items:center;">
-                <div>
-                    <span style="font-weight:600;color:#1e293b;">{html.escape(c['name'][:50])}</span>
-                    <span style="margin-left:6px;font-size:0.75rem;background:#e6f7ec;color:#15803d;padding:1px 8px;border-radius:8px;">{c['grade']}</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:12px;">
-                    <span style="color:#64748b;font-size:0.8rem;">{c['health']['icon']} {c['health']['label']}</span>
-                    <span style="color:#dc2626;font-weight:600;font-size:0.85rem;">{c['reason']}</span>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f"""<div style="background:{bg};padding:0.6rem 1rem;border-radius:8px;border-left:4px solid {border};margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;"><div><span style="font-weight:600;color:#1e293b;">{html.escape(c['name'][:50])}</span><span style="margin-left:6px;font-size:0.75rem;background:#e6f7ec;color:#15803d;padding:1px 8px;border-radius:8px;">{html.escape(c['grade'])}</span></div><div style="display:flex;align-items:center;gap:12px;"><span style="color:#64748b;font-size:0.8rem;">{c['health']['icon']} {c['health']['label']}</span><span style="color:#dc2626;font-weight:600;font-size:0.85rem;">{html.escape(c['reason'])}</span></div></div>""", unsafe_allow_html=True)
 
             if st.button("去处理 →", key=f"go_{c['id']}", use_container_width=False):
                 st.session_state['current_page'] = "客户工作台"
@@ -217,27 +187,10 @@ def render_home_page():
 
     # ===== ⚡ 次优先 =====
     if secondary_list:
-        st.markdown(f"""
-        <div style="display:flex;align-items:center;gap:8px;margin:16px 0 8px 0;">
-            <span style="font-size:1.2rem;">⚡</span>
-            <span style="font-weight:700;font-size:1.05rem;color:#1e293b;">次优先</span>
-            <span style="background:#f8fafc;color:#64748b;padding:0 10px;border-radius:10px;font-size:0.75rem;font-weight:600;">{len(secondary_list)}</span>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"""<div style="display:flex;align-items:center;gap:8px;margin:16px 0 8px 0;"><span style="font-size:1.2rem;">⚡</span><span style="font-weight:700;font-size:1.05rem;color:#1e293b;">次优先</span><span style="background:#f8fafc;color:#64748b;padding:0 10px;border-radius:10px;font-size:0.75rem;font-weight:600;">{len(secondary_list)}</span></div>""", unsafe_allow_html=True)
 
         for c in secondary_list:
-            st.markdown(f"""
-            <div style="background:white;padding:0.5rem 1rem;border-radius:8px;
-                        border:1px solid #eef1f5;margin-bottom:3px;
-                        display:flex;justify-content:space-between;align-items:center;">
-                <div>
-                    <span style="font-weight:600;font-size:0.9rem;color:#1e293b;">{html.escape(c['name'][:50])}</span>
-                    <span style="margin-left:6px;font-size:0.7rem;background:#e6f7ec;color:#15803d;padding:1px 8px;border-radius:8px;">{c['grade']}</span>
-                    <span style="margin-left:4px;font-size:0.75rem;color:#64748b;">{c['health']['icon']} {c['health']['label']}</span>
-                </div>
-                <div style="color:#b45309;font-size:0.8rem;">{c['reason']}</div>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f"""<div style="background:white;padding:0.5rem 1rem;border-radius:8px;border:1px solid #eef1f5;margin-bottom:3px;display:flex;justify-content:space-between;align-items:center;"><div><span style="font-weight:600;font-size:0.9rem;color:#1e293b;">{html.escape(c['name'][:50])}</span><span style="margin-left:6px;font-size:0.7rem;background:#e6f7ec;color:#15803d;padding:1px 8px;border-radius:8px;">{html.escape(c['grade'])}</span><span style="margin-left:4px;font-size:0.75rem;color:#64748b;">{c['health']['icon']} {c['health']['label']}</span></div><div style="color:#b45309;font-size:0.8rem;">{html.escape(c['reason'])}</div></div>""", unsafe_allow_html=True)
 
             if st.button("去看看", key=f"sec_{c['id']}", use_container_width=False):
                 st.session_state['current_page'] = "客户工作台"
