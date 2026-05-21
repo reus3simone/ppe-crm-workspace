@@ -22,7 +22,7 @@ def render_workspace():
         return
 
     # ── 顶部操作栏 ──
-    c1, c2, c3, c4 = st.columns([2, 1.2, 1, 1.2])
+    c1, c2, c3, c4, c5 = st.columns([2.2, 1.5, 1, 1, 1])
     with c1:
         search_key = st.text_input("🔍 搜索", placeholder="公司 / 联系人 / 邮箱 / 电话 / 国家 / 产品",
                                    label_visibility="collapsed")
@@ -31,12 +31,23 @@ def render_workspace():
         country_filter = st.selectbox("国家", ["全部"] + [c for c in all_countries if c.strip()],
                                       label_visibility="collapsed")
     with c3:
-        if st.button("➕ 新建", type="secondary", use_container_width=True):
+        if st.button("➕ 新建客户", type="primary", use_container_width=True):
             st.session_state['ws_new_customer'] = True
             st.rerun()
     with c4:
-        if st.button("📥 批量导入", type="primary", use_container_width=True):
+        if st.button("📥 批量导入", use_container_width=True):
             st.session_state['ws_show_import'] = True
+            st.rerun()
+    with c5:
+        is_batch = st.session_state.get('ws_batch_mode', False)
+        label = "☑ 批量操作" if not is_batch else "✕ 退出批量"
+        if st.button(label, use_container_width=True):
+            if is_batch:
+                st.session_state['ws_batch_mode'] = False
+                st.session_state['ws_batch_ids'] = set()
+                st.session_state['_batch_action'] = None
+            else:
+                st.session_state['ws_batch_mode'] = True
             st.rerun()
 
     # ── 快捷筛选标签 ──

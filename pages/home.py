@@ -6,11 +6,60 @@ from database.db import Database
 
 db = Database()
 
+# ── 国家 → 国旗 emoji ──
+COUNTRY_FLAG = {
+    'usa': '🇺🇸', 'united states': '🇺🇸', 'us': '🇺🇸', 'america': '🇺🇸',
+    'uk': '🇬🇧', 'united kingdom': '🇬🇧', 'england': '🇬🇧', 'britain': '🇬🇧',
+    'germany': '🇩🇪', 'deutschland': '🇩🇪',
+    'france': '🇫🇷', 'french': '🇫🇷',
+    'italy': '🇮🇹', 'italia': '🇮🇹',
+    'spain': '🇪🇸', 'españa': '🇪🇸',
+    'netherlands': '🇳🇱', 'holland': '🇳🇱',
+    'belgium': '🇧🇪',
+    'switzerland': '🇨🇭',
+    'sweden': '🇸🇪',
+    'norway': '🇳🇴',
+    'denmark': '🇩🇰',
+    'finland': '🇫🇮',
+    'poland': '🇵🇱',
+    'czech': '🇨🇿', 'czech republic': '🇨🇿',
+    'australia': '🇦🇺',
+    'canada': '🇨🇦',
+    'japan': '🇯🇵',
+    'south korea': '🇰🇷', 'korea': '🇰🇷',
+    'brazil': '🇧🇷',
+    'mexico': '🇲🇽',
+    'uae': '🇦🇪', 'united arab emirates': '🇦🇪',
+    'saudi arabia': '🇸🇦',
+    'south africa': '🇿🇦',
+    'india': '🇮🇳',
+    'singapore': '🇸🇬',
+    'malaysia': '🇲🇾',
+    'thailand': '🇹🇭',
+    'vietnam': '🇻🇳',
+    'indonesia': '🇮🇩',
+    'turkey': '🇹🇷', 'türkiye': '🇹🇷',
+    'russia': '🇷🇺',
+    'china': '🇨🇳',
+}
+
+
+def _flag(country):
+    if not country:
+        return ''
+    c = country.strip().lower()
+    for k, v in COUNTRY_FLAG.items():
+        if k in c or c in k:
+            return v
+    return '🌍'
+
 
 def render_home_page():
     st.markdown("""
-    <h1 style="margin-bottom:0;">📊 PPE客户开发工作区</h1>
-    <p style="color:#64748b;margin-top:0;">今天谁该跟进了？</p>
+    <div style="margin-bottom:0.5rem;">
+        <span style="font-size:1.5rem;font-weight:700;color:#1e293b;">📊 PPE客户开发工作区</span>
+        <span style="color:#94a3b8;font-size:0.85rem;margin-left:12px;">今天谁该跟进了？</span>
+    </div>
     """, unsafe_allow_html=True)
 
     df, err = db.get_all_customers_with_stats()
@@ -20,7 +69,9 @@ def render_home_page():
 
     today = date.today()
 
-    # 概览行
+    # =========================================================
+    # 1. 指标卡片 (4 个)
+    # =========================================================
     total = len(df)
     a_count = len(df[df['customer_grade'] == 'A']) if not df.empty else 0
     b_count = len(df[df['customer_grade'] == 'B']) if not df.empty else 0
@@ -38,17 +89,47 @@ def render_home_page():
                 return False
         overdue_count = df[df['follow_up_date'].apply(_is_overdue)].shape[0]
 
-    st.markdown(f"""<div style="background:#f8fafc;padding:0.5rem 1rem;border-radius:8px;border:1px solid #eef1f5;font-size:0.85rem;color:#475569;margin-bottom:1rem;">总客户 <strong>{total}</strong> ｜ A级 <strong>{a_count}</strong> ｜ B级 <strong>{b_count}</strong> ｜ C级 <strong>{c_count}</strong> ｜推进中 <strong>{active}</strong> ｜<span style="color:#dc2626;">逾期 <strong>{overdue_count}</strong></span></div>""", unsafe_allow_html=True)
+    mc1, mc2, mc3, mc4 = st.columns(4)
+    with mc1:
+        st.markdown(
+            '<div class="metric-card"><div class="label">总客户数</div>'
+            f'<div class="value">{total}</div>'
+            f'<div class="sub">A {a_count} · B {b_count} · C {c_count}</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+    with mc2:
+        st.markdown(
+            '<div class="metric-card"><div class="label">A 级 / B 级 / C 级</div>'
+            f'<div class="value" style="font-size:1.1rem;">{a_count} / {b_count} / {c_count}</div>'
+            f'<div class="sub">B 级占比最高</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+    with mc3:
+        st.markdown(
+            '<div class="metric-card"><div class="label">推进中客户</div>'
+            f'<div class="value">{active}</div>'
+            '<div class="sub">已报价 + 样品阶段</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+    with mc4:
+        st.markdown(
+            '<div class="metric-card"><div class="label">逾期跟进</div>'
+            f'<div class="value" style="color:{("#ef4444" if overdue_count > 0 else "#1e293b")};">{overdue_count}</div>'
+            f'<div class="sub" style="color:{("#ef4444" if overdue_count > 0 else "#94a3b8")};">'
+            f'{"需尽快处理" if overdue_count > 0 else "全部按时"}</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
 
-    # ── 开发阶段分布 ──
+    st.markdown('<div style="height:0.6rem;"></div>', unsafe_allow_html=True)
+
+    # =========================================================
+    # 2. 开发阶段分布 (5 个彩色卡片)
+    # =========================================================
     if not df.empty:
-        stages = [
-            ("🆕 初次开发", "初次开发", "#eef2ff", "#3b5fd9"),
-            ("📧 已发开发信", "已发开发信", "#fef9e7", "#b45309"),
-            ("💬 已报价", "已报价", "#e6f7ec", "#15803d"),
-            ("📦 样品阶段", "样品阶段", "#ede9fe", "#7c3aed"),
-            ("✅ 已成交", "已成交", "#fce7f3", "#be185d"),
-        ]
         stage_keys = ["初次开发", "已发开发信", "已报价", "样品阶段", "已成交"]
         stage_labels = ["🆕 初次开发", "📧 已发开发信", "💬 已报价", "📦 样品阶段", "✅ 已成交"]
         stage_colors = ["#3b5fd9", "#b45309", "#15803d", "#7c3aed", "#be185d"]
@@ -63,10 +144,18 @@ def render_home_page():
                               df['development_status'].str.contains('开发信', na=False)].shape[0]
                 else:
                     cnt = df[df['development_status'] == sk].shape[0]
-                st.markdown(f"""<div style="background:{stage_bgs[i]};padding:4px 8px;border-radius:8px;text-align:center;border:1px solid {stage_colors[i]}22;margin-bottom:4px;"><div style="font-weight:700;font-size:1.3rem;color:{stage_colors[i]};">{cnt}</div><div style="font-size:0.7rem;color:{stage_colors[i]};">{stage_labels[i]}</div></div>""", unsafe_allow_html=True)
-                if st.button("查看", key=f"gostage_{i}", use_container_width=True,
+
+                st.markdown(
+                    f'<div class="stage-card" style="background:{stage_bgs[i]};border-color:{stage_colors[i]}33;">'
+                    f'<div class="count" style="color:{stage_colors[i]};">{cnt}</div>'
+                    f'<div class="name" style="color:{stage_colors[i]};">{stage_labels[i]}</div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+                if st.button("查看 →", key=f"gostage_{i}", use_container_width=True,
                              help=f"去客户工作台查看{sk}客户"):
                     st.session_state['current_page'] = "客户工作台"
+                    st.session_state['ws_filter_tag'] = sk
                     for k in ['ws_selected_id', 'ws_show_import', 'ws_new_customer', 'ws_edit_id']:
                         st.session_state.pop(k, None)
                     st.rerun()
@@ -78,20 +167,22 @@ def render_home_page():
             st.rerun()
         return
 
-    # 分析每个客户
+    st.markdown('<div style="height:0.8rem;"></div>', unsafe_allow_html=True)
+
+    # =========================================================
+    # 3. 分析每个客户 → 紧急 / 次优先
+    # =========================================================
     urgent_list = []
     secondary_list = []
 
     for _, row in df.iterrows():
         cid = row['id']
         name = row['company_name']
+        country = str(row.get('country', '') or '')
         grade = str(row.get('customer_grade', 'C'))
-        status = str(row.get('development_status', ''))
         grade_label = f"{grade}级" if grade in ('A', 'B', 'C') else grade
-
         health = db.get_customer_health(row.get('last_follow_up_date'))
 
-        # 手动跟进日
         fud = row.get('follow_up_date')
         manual_due = None
         if fud and pd.notna(fud):
@@ -100,27 +191,27 @@ def render_home_page():
             except Exception:
                 pass
 
-        # SOP 自动计算
         next_date, next_msg = db.calculate_next_follow_up(cid)
 
         is_urgent = False
         reason = ""
+        overdue_days = 0
 
         if manual_due and manual_due <= today:
             is_urgent = True
-            if manual_due < today:
-                days = (today - manual_due).days
-                reason = f"逾期{days}天"
-            else:
+            overdue_days = (today - manual_due).days
+            if overdue_days == 0:
                 reason = "今日跟进"
+            else:
+                reason = f"逾期{overdue_days}天"
 
         if next_date and next_date <= today and not is_urgent:
             is_urgent = True
+            overdue_days = (today - next_date).days
             reason = next_msg
 
         is_secondary = False
         if not is_urgent:
-            # 如果手动设了未来的跟进日期，以手动为准，SOP 不干预
             if manual_due and manual_due > today:
                 pass
             elif next_date and 0 < (next_date - today).days <= 3:
@@ -130,10 +221,16 @@ def render_home_page():
                 is_secondary = True
                 reason = "变凉中"
 
+        follow_up_str = ''
+        if manual_due:
+            follow_up_str = manual_due.isoformat()
+        elif next_date:
+            follow_up_str = next_date.isoformat()
+
         entry = {
-            'id': cid, 'name': name, 'grade': grade_label,
-            'grade_raw': grade, 'status': status,
-            'health': health, 'reason': reason,
+            'id': cid, 'name': name, 'country': country, 'grade': grade_label,
+            'grade_raw': grade, 'follow_up_date': follow_up_str,
+            'overdue_days': overdue_days, 'reason': reason,
         }
 
         if is_urgent:
@@ -141,42 +238,51 @@ def render_home_page():
         elif is_secondary:
             secondary_list.append(entry)
 
-    # 排序：逾期越久越前，同逾期A级优先
+    # 排序：逾期越久越前，同逾期 A 优先
     urgent_list.sort(key=lambda e: (
-        -(e.get('_overdue_days', 0)),
+        -e['overdue_days'],
         0 if e['grade_raw'] == 'A' else 1 if e['grade_raw'] == 'B' else 2
     ))
-
-    # 计算逾期天数
-    for e in urgent_list:
-        cid = e['id']
-        c, _ = db.get_customer(cid)
-        if c and c.get('follow_up_date'):
-            try:
-                fd = pd.to_datetime(c['follow_up_date']).date()
-                e['_overdue_days'] = (today - fd).days
-            except Exception:
-                e['_overdue_days'] = 0
-        else:
-            e['_overdue_days'] = 0
-
-    urgent_list.sort(key=lambda e: (
-        -e['_overdue_days'],
-        0 if e['grade_raw'] == 'A' else 1 if e['grade_raw'] == 'B' else 2
-    ))
-
     secondary_list.sort(key=lambda e: (
         0 if e['grade_raw'] == 'A' else 1 if e['grade_raw'] == 'B' else 2
     ))
 
-    # ===== 🔥 今天必须处理 =====
+    # =========================================================
+    # 4. 🔥 今天必须处理
+    # =========================================================
     if urgent_list:
-        st.markdown(f"""<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-size:1.2rem;">🔥</span><span style="font-weight:700;font-size:1.05rem;color:#1e293b;">今天必须处理</span><span style="background:#fef2f2;color:#dc2626;padding:0 10px;border-radius:10px;font-size:0.75rem;font-weight:600;">{len(urgent_list)}</span></div>""", unsafe_allow_html=True)
+        st.markdown(
+            f'<div class="section-header">'
+            f'<span style="font-size:1.2rem;">🔥</span>'
+            f'<span class="title">今天必须处理</span>'
+            f'<span class="badge" style="background:#fef2f2;color:#dc2626;">{len(urgent_list)}</span>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
 
         for c in urgent_list:
-            bg = "#fef2f2" if "逾期" in c['reason'] else "#fef9e7"
-            border = "#ef4444" if "逾期" in c['reason'] else "#f59e0b"
-            st.markdown(f"""<div style="background:{bg};padding:0.6rem 1rem;border-radius:8px;border-left:4px solid {border};margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;"><div><span style="font-weight:600;color:#1e293b;">{html.escape(c['name'][:50])}</span><span style="margin-left:6px;font-size:0.75rem;background:#e6f7ec;color:#15803d;padding:1px 8px;border-radius:8px;">{html.escape(c['grade'])}</span></div><div style="display:flex;align-items:center;gap:12px;"><span style="color:#64748b;font-size:0.8rem;">{c['health']['icon']} {c['health']['label']}</span><span style="color:#dc2626;font-weight:600;font-size:0.85rem;">{html.escape(c['reason'])}</span></div></div>""", unsafe_allow_html=True)
+            is_overdue = "逾期" in c['reason']
+            bg = "#fef2f2" if is_overdue else "#fffbeb"
+            border = "#ef4444" if is_overdue else "#f59e0b"
+            overdue_color = "#dc2626" if is_overdue else "#d97706"
+
+            follow_display = c['follow_up_date'] if c['follow_up_date'] else '—'
+            flag = _flag(c['country'])
+
+            st.markdown(
+                f'<div class="urgent-row" style="background:{bg};border-left-color:{border};">'
+                f'<div class="left">'
+                f'<span class="name">{html.escape(c["name"][:45])}</span>'
+                f'<span style="font-size:0.85rem;">{flag} {html.escape(c["country"][:15])}</span>'
+                f'<span class="tag grade-{c["grade_raw"].lower()}">{html.escape(c["grade"])}</span>'
+                f'</div>'
+                f'<div class="right">'
+                f'<span class="date">跟进 {follow_display}</span>'
+                f'<span class="overdue" style="color:{overdue_color};">{html.escape(c["reason"])}</span>'
+                f'</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
             if st.button("去处理 →", key=f"go_{c['id']}", use_container_width=False):
                 st.session_state['current_page'] = "客户工作台"
@@ -185,12 +291,36 @@ def render_home_page():
     else:
         st.success("🎉 今天没有待处理的客户，干得漂亮！")
 
-    # ===== ⚡ 次优先 =====
+    # =========================================================
+    # 5. ⚡ 次优先
+    # =========================================================
     if secondary_list:
-        st.markdown(f"""<div style="display:flex;align-items:center;gap:8px;margin:16px 0 8px 0;"><span style="font-size:1.2rem;">⚡</span><span style="font-weight:700;font-size:1.05rem;color:#1e293b;">次优先</span><span style="background:#f8fafc;color:#64748b;padding:0 10px;border-radius:10px;font-size:0.75rem;font-weight:600;">{len(secondary_list)}</span></div>""", unsafe_allow_html=True)
+        st.markdown('<div style="height:0.4rem;"></div>', unsafe_allow_html=True)
+        st.markdown(
+            f'<div class="section-header">'
+            f'<span style="font-size:1.2rem;">⚡</span>'
+            f'<span class="title">次优先</span>'
+            f'<span class="badge" style="background:#f8fafc;color:#64748b;">{len(secondary_list)}</span>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
 
         for c in secondary_list:
-            st.markdown(f"""<div style="background:white;padding:0.5rem 1rem;border-radius:8px;border:1px solid #eef1f5;margin-bottom:3px;display:flex;justify-content:space-between;align-items:center;"><div><span style="font-weight:600;font-size:0.9rem;color:#1e293b;">{html.escape(c['name'][:50])}</span><span style="margin-left:6px;font-size:0.7rem;background:#e6f7ec;color:#15803d;padding:1px 8px;border-radius:8px;">{html.escape(c['grade'])}</span><span style="margin-left:4px;font-size:0.75rem;color:#64748b;">{c['health']['icon']} {c['health']['label']}</span></div><div style="color:#b45309;font-size:0.8rem;">{html.escape(c['reason'])}</div></div>""", unsafe_allow_html=True)
+            follow_display = c['follow_up_date'] if c['follow_up_date'] else '—'
+            flag = _flag(c['country'])
+
+            st.markdown(
+                f'<div class="secondary-row">'
+                f'<div class="left">'
+                f'<span class="name">{html.escape(c["name"][:45])}</span>'
+                f'<span class="meta">{flag} {html.escape(c["country"][:12])}</span>'
+                f'<span class="tag grade-{c["grade_raw"].lower()}" style="font-size:0.65rem;">{html.escape(c["grade"])}</span>'
+                f'<span class="meta">跟进 {follow_display}</span>'
+                f'</div>'
+                f'<div class="right">{html.escape(c["reason"])}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
             if st.button("去看看", key=f"sec_{c['id']}", use_container_width=False):
                 st.session_state['current_page'] = "客户工作台"
@@ -198,4 +328,8 @@ def render_home_page():
                 st.rerun()
 
     st.markdown("---")
-    st.caption("去「客户工作台」查看全部客户 · 去「设置」管理团队和备份数据")
+    st.markdown(
+        '<span style="color:#94a3b8;font-size:0.78rem;">'
+        '去「客户工作台」查看全部客户 · 去「设置」管理团队和备份数据</span>',
+        unsafe_allow_html=True,
+    )

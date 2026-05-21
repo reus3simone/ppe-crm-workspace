@@ -11,13 +11,16 @@ def render_customer_detail(customer):
     name = html.escape(str(customer['company_name']))
     grade = str(customer.get('customer_grade', 'C'))
     grade_tag = f"{grade}级" if grade in ('A', 'B', 'C') else grade
+    health = db.get_customer_health(customer.get('last_follow_up_date'))
 
     top_c1, top_c2 = st.columns([5, 1])
     with top_c1:
-        health = db.get_customer_health(customer.get('last_follow_up_date'))
         st.markdown(f"### {health['icon']} {name}")
     with top_c2:
-        if st.button("🗑 删除", type="primary", use_container_width=True):
+        if st.button("✏️ 编辑", use_container_width=True, key="edit_customer"):
+            st.session_state['ws_edit_id'] = cid
+            st.rerun()
+        if st.button("🗑 删除", type="primary", use_container_width=True, key="del_customer"):
             ok, err = db.delete_customer(cid)
             if ok:
                 st.session_state['ws_selected_id'] = None
@@ -63,13 +66,13 @@ def render_info_tab(customer):
     products = _v(customer.get('products'))
 
     fud = customer.get('follow_up_date', '')
-    follow_up = f'<span class="info-value">{fud}</span>' if fud else _b
+    follow_up = f'<span style="color:#1e293b;font-weight:500;">{fud}</span>' if fud else _b
 
     sample = customer.get('sample_status', '未寄出')
     tracking = customer.get('sample_tracking_number', '')
-    sample_rows = f'<div class="info-row"><span class="info-label">样品</span><span class="info-value">{sample}</span></div>'
+    sample_status_v = f'{sample}'
     if sample != '未寄出' and tracking:
-        sample_rows += f'<div class="info-row"><span class="info-label">快递单号</span><span class="info-value">{html.escape(tracking)}</span></div>'
+        sample_status_v += f' ｜快递 {html.escape(tracking)}'
 
     links = ''
     if customer.get('linkedin'):
@@ -77,62 +80,67 @@ def render_info_tab(customer):
     if customer.get('website'):
         links += f'<a href="{customer["website"]}" target="_blank" style="color:#4f8fff;text-decoration:none;font-size:0.85rem;">🌐 官网</a>'
 
+    # HubSpot style: label on top, value below, 2-column grid
     st.markdown(
-        f'<div class="detail-section"><div style="display:grid;grid-template-columns:1fr 1fr;gap:0 2rem;">'
-        f'<div><h5>基本信息</h5>'
-        f'<div class="info-row"><span class="info-label">联系人</span><span class="info-value">{contact}</span></div>'
-        f'<div class="info-row"><span class="info-label">邮箱</span><span class="info-value">{email}</span></div>'
-        f'<div class="info-row"><span class="info-label">电话</span><span class="info-value">{phone}</span></div>'
-        f'<div class="info-row"><span class="info-label">WhatsApp</span><span class="info-value">{whatsapp}</span></div>'
-        f'<div class="info-row"><span class="info-label">国家</span><span class="info-value">{country}</span></div>'
-        f'{links}'
-        f'</div><div><h5>业务信息</h5>'
-        f'<div class="info-row"><span class="info-label">来源</span><span class="info-value">{source}</span></div>'
-        f'<div class="info-row"><span class="info-label">开发阶段</span><span class="info-value">{dev_s}</span></div>'
-        f'<div class="info-row"><span class="info-label">主营产品</span><span class="info-value">{products}</span></div>'
-        f'<div class="info-row"><span class="info-label">下次跟进</span><span class="info-value">{follow_up}</span></div>'
-        f'{sample_rows}'
-        f'</div></div></div>',
+        f'<div class="detail-section">'
+        f'<div class="hs-section-title">联系信息</div>'
+        f'<div class="hs-grid-2">'
+        f'<div class="hs-field"><div class="hs-label">联系人</div><div class="hs-value">{contact}</div></div>'
+        f'<div class="hs-field"><div class="hs-label">邮箱</div><div class="hs-value">{email}</div></div>'
+        f'<div class="hs-field"><div class="hs-label">电话</div><div class="hs-value">{phone}</div></div>'
+        f'<div class="hs-field"><div class="hs-label">WhatsApp</div><div class="hs-value">{whatsapp}</div></div>'
+        f'<div class="hs-field"><div class="hs-label">国家</div><div class="hs-value">{country}</div></div>'
+        f'<div class="hs-field"><div class="hs-label">链接</div><div class="hs-value">{links if links else _b}</div></div>'
+        f'</div></div>',
+        unsafe_allow_html=True
+    )
+
+    st.markdown(
+        f'<div class="detail-section">'
+        f'<div class="hs-section-title">业务信息</div>'
+        f'<div class="hs-grid-2">'
+        f'<div class="hs-field"><div class="hs-label">来源</div><div class="hs-value">{source}</div></div>'
+        f'<div class="hs-field"><div class="hs-label">开发阶段</div><div class="hs-value">{dev_s}</div></div>'
+        f'<div class="hs-field"><div class="hs-label">主营产品</div><div class="hs-value">{products}</div></div>'
+        f'<div class="hs-field"><div class="hs-label">下次跟进</div><div class="hs-value">{follow_up}</div></div>'
+        f'<div class="hs-field"><div class="hs-label">样品状态</div><div class="hs-value">{sample_status_v}</div></div>'
+        f'</div></div>',
         unsafe_allow_html=True
     )
 
     notes = customer.get('notes', '')
     notes_display = html.escape(notes) if notes else '<span style="color:#94a3b8;">暂无备注</span>'
     st.markdown(
-        f'<div class="detail-section"><h5>备注</h5>'
-        f'<div style="font-size:0.85rem;color:#1e293b;line-height:1.6;min-height:2rem;">{notes_display}</div></div>',
+        f'<div class="detail-section">'
+        f'<div class="hs-section-title">备注</div>'
+        f'<div style="font-size:0.85rem;color:#1e293b;line-height:1.7;">{notes_display}</div></div>',
         unsafe_allow_html=True
     )
-
-    if st.button("✏️ 编辑资料", use_container_width=True):
-        st.session_state['ws_edit_id'] = cid
-        st.rerun()
 
 
 def render_followup_tab(cid, customer=None):
     st.markdown("##### 跟进时间轴")
 
-    # 写跟进
-    with st.expander("✏️ 写跟进记录", expanded=False):
-        with st.form(f"followup_form_{cid}", clear_on_submit=True):
-            event_type = st.selectbox("事件类型", ["跟进邮件", "电话沟通", "WhatsApp", "客户回复", "样品沟通", "其他"])
-            content = st.text_area("内容", placeholder="记录这次跟进...", height=100)
-            submitted = st.form_submit_button("💾 保存跟进", type="primary")
-            if submitted and content.strip():
-                ok, _ = db.add_timeline_event(cid, event_type, content.strip())
-                if ok:
-                    # 跟进闭环：根据等级算建议下次跟进日
-                    if customer is None:
-                        c, _ = db.get_customer(cid)
-                    else:
-                        c = customer
-                    grade = c.get('customer_grade', 'B') if c else 'B'
-                    delta_days = {'A': 3, 'B': 7, 'C': 14}.get(grade, 7)
-                    suggested = (date.today() + timedelta(days=delta_days)).isoformat()
-                    st.session_state['_followup_suggest'] = suggested
-                    st.session_state['_followup_grade'] = grade
-                    st.success("已记录")
-                    st.rerun()
+    # ── 写跟进（常驻顶部） ──
+    st.markdown('<div style="font-size:0.82rem;font-weight:600;color:#1e293b;margin-bottom:6px;">✏️ 写跟进记录</div>', unsafe_allow_html=True)
+    with st.form(f"followup_form_{cid}", clear_on_submit=True):
+        event_type = st.selectbox("事件类型", ["跟进邮件", "电话沟通", "WhatsApp", "客户回复", "样品沟通", "其他"])
+        content = st.text_area("内容", placeholder="记录这次跟进...", height=100)
+        submitted = st.form_submit_button("💾 保存跟进", type="primary")
+        if submitted and content.strip():
+            ok, _ = db.add_timeline_event(cid, event_type, content.strip())
+            if ok:
+                if customer is None:
+                    c, _ = db.get_customer(cid)
+                else:
+                    c = customer
+                grade = c.get('customer_grade', 'B') if c else 'B'
+                delta_days = {'A': 3, 'B': 7, 'C': 14}.get(grade, 7)
+                suggested = (date.today() + timedelta(days=delta_days)).isoformat()
+                st.session_state['_followup_suggest'] = suggested
+                st.session_state['_followup_grade'] = grade
+                st.success("已记录")
+                st.rerun()
 
     # ── 跟进闭环建议 ──
     _show_suggest(st.session_state.get('_followup_suggest'), cid)
